@@ -1,7 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.concurrency import run_in_threadpool
 from fastapi import Request, HTTPException
-from ..database.querys.auth import check_token
+from ..database.querys.auth_query import check_token
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

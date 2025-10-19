@@ -28,7 +28,20 @@ class Register(BaseModel):
     password: str
 
 
-def check_token(token: str):
+def check_token(token: str) -> str | None:
+    """
+    Verifies the given token by decoding and validating against the database.
+
+    If the token is valid and corresponds to a user ID present in the database,
+    the function ensures the user exists. If not valid, or if any errors occur during
+    the execution, the function will return None.
+
+    :param token: A string representing the token to be verified.
+    :type token: str
+    :return: A string representing the user ID if the token is valid and exists in
+        the database, or None if the token is invalid or a failure occurs.
+    :rtype: str | None
+    """
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:
@@ -37,10 +50,22 @@ def check_token(token: str):
 
     try:
         user_id = decode_access_token(token)
-        cur.execute(f"SELECT 1 FROM users WHERE id = {user_id}")
+        cur.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
+        result = cur.fetchone()
+
+        if result:
+            return user_id
+        else:
+            return None
     except Exception as e:
         print(f"Erro ao verificar token: {e}")
         return None
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
 def login_query(login_data: Login) -> str | None:
     """Verifica o usuário e retorna o JWT se as credenciais forem válidas.

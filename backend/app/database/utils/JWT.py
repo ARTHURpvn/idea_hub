@@ -2,7 +2,7 @@ import os
 from datetime import timedelta, datetime
 
 from dotenv import load_dotenv
-from jose import jwt
+from jose import jwt, JWTError
 
 load_dotenv()
 
@@ -29,5 +29,15 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 def decode_access_token(token: str):
-    user_id = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    return user_id["sub"]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise ValueError("Token não contém 'sub' (user_id)")
+        return user_id
+    except JWTError as e:
+        print(f"Erro ao decodificar JWT: {e}")
+        raise
+    except Exception as e:
+        print(f"Erro inesperado ao decodificar token: {e}")
+        raise

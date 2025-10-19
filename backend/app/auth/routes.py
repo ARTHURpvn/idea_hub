@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
 import re
-from ..database.querys.auth import login_query, register_query
+from ..database.querys.auth_query import login_query, register_query
 
 router = APIRouter()
 
