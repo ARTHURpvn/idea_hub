@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -17,7 +18,7 @@ db_name = os.getenv("POSTGRES_DB", "idea_hub_db")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class Idea(BaseModel):
-    user_id: str
+    user_id: Optional[str]
     title: str
     ai_classification: str
 
@@ -63,7 +64,7 @@ def create_idea(idea: Idea) -> str | None:
         except Exception:
             pass
 
-def get_all_ideas(user_id: str) -> list[Idea] | None:
+def get_all_ideas(user_id: str) -> list[dict] | None:
     """
     Fetches a list of ideas associated with the given user.
 
@@ -73,9 +74,9 @@ def get_all_ideas(user_id: str) -> list[Idea] | None:
 
     :param user_id: The unique identifier of the user whose ideas are to
         be retrieved.
-    :return: A list of Idea objects representing the ideas linked to the
+    :return: A list of dict objects representing the ideas linked to the
         specified user.
-    :rtype: list[Idea] | None
+    :rtype: list[dict] | None
     """
     try:
         conn, cur = get_db_conn(db_name)
@@ -83,8 +84,18 @@ def get_all_ideas(user_id: str) -> list[Idea] | None:
         print(f"Erro de conexao ao pegar ideas: {e}")
         return None
     try:
-        cur.execute(f"SELECT * FROM ideas WHERE user_id = {user_id}")
-        ideas = cur.fetchall()
+        cur.execute("SELECT id, user_id, title, status, ai_classification FROM ideas WHERE user_id = %s", (user_id,))
+        rows = cur.fetchall()
+
+        ideas = []
+        for row in rows:
+            ideas.append({
+                "id": str(row[0]),
+                "user_id": str(row[1]),
+                "title": row[2],
+                "status": row[3],
+                "ai_classification": row[4]
+            })
         return ideas
     except Exception as e:
         print(f"Erro ao pegar ideas: {e}")
@@ -96,19 +107,18 @@ def get_all_ideas(user_id: str) -> list[Idea] | None:
         except Exception:
             pass
 
-def get_idea_by_id(idea_id: int) -> Idea | None:
+def get_idea_by_id(idea_id: str) -> dict | None:
     """
     Fetches an idea by its unique identifier.
 
-    This function retrieves an idea object based on the given unique integer identifier.
+    This function retrieves an idea object based on the given unique identifier.
     If no idea is found with the provided identifier, the function will return None.
 
     :param idea_id: Identifier for the idea to retrieve.
-    :type idea_id: int
-    :return: The Idea object if found; otherwise None.
-    :rtype: Idea | None
+    :type idea_id: str
+    :return: The Idea dict if found; otherwise None.
+    :rtype: dict | None
     """
-
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:
@@ -116,9 +126,18 @@ def get_idea_by_id(idea_id: int) -> Idea | None:
         return None
 
     try:
-        cur.execute(f"SELECT * FROM ideas WHERE id = {idea_id}")
-        idea = cur.fetchone()
-        return idea
+        cur.execute("SELECT id, user_id, title, status, ai_classification FROM ideas WHERE id = %s", (idea_id,))
+        row = cur.fetchone()
+
+        if row:
+            return {
+                "id": str(row[0]),
+                "user_id": str(row[1]),
+                "title": row[2],
+                "status": row[3],
+                "ai_classification": row[4]
+            }
+        return None
     except Exception as e:
         print(f"Erro ao pegar Ideia: {e}")
         return None
@@ -129,7 +148,7 @@ def get_idea_by_id(idea_id: int) -> Idea | None:
         except Exception:
             pass
 
-def edit_idea_status(idea_id: int, status: str) -> None:
+def edit_idea_status(idea_id: str, new_status: str) -> bool:
     """
     Edit the status of an idea in the database. This function updates the idea's
     status based on the given idea ID and new status value. It ensures a
@@ -137,25 +156,26 @@ def edit_idea_status(idea_id: int, status: str) -> None:
     or update execution are handled and logged appropriately.
 
     :param idea_id: ID of the idea to be updated
-    :type idea_id: int
-    :param status: New status to be set for the idea
-    :type status: str
-    :return: None
-    :rtype: NoneType
+    :type idea_id: str
+    :param new_status: New status to be set for the idea
+    :type new_status: str
+    :return: True if successful, False otherwise
+    :rtype: bool
     """
-
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:
         print(f"Erro de conexao ao editar Ideia: {e}")
-        return None
+        return False
 
     try:
-        cur.execute(f"UPDATE ideas SET status = '{status}' WHERE id = {idea_id}")
-        return None
+        cur.execute("UPDATE ideas SET status = %s WHERE id = %s", (new_status, idea_id))
+        conn.commit()
+        return True
     except Exception as e:
         print(f"Erro ao editar Ideia: {e}")
-        return None
+        conn.rollback()
+        return False
     finally:
         try:
             cur.close()
@@ -163,29 +183,32 @@ def edit_idea_status(idea_id: int, status: str) -> None:
         except Exception:
             pass
 
-def edit_idea_content(idea_id: int, content: str) -> None:
+def edit_idea_content(idea_id: str, content: str) -> bool:
     """
     Edit the content of an existing idea. This function allows updating the text content
     associated with a specific idea, identified by its unique identifier.
 
     :param idea_id: The unique identifier of the idea to be edited.
-    :type idea_id: int
+    :type idea_id: str
     :param content: The new content to replace the existing idea's content.
     :type content: str
-    :return: None
+    :return: True if successful, False otherwise
+    :rtype: bool
     """
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:
         print(f"Erro de conexao ao editar Ideia: {e}")
-        return None
+        return False
 
     try:
-        cur.execute(f"UPDATE ideas SET raw_content = '{content}' WHERE id = {idea_id}")
-        return None
+        cur.execute("UPDATE ideas SET raw_content = %s WHERE id = %s", (content, idea_id))
+        conn.commit()
+        return True
     except Exception as e:
         print(f"Erro ao editar Ideia: {e}")
-        return None
+        conn.rollback()
+        return False
     finally:
         try:
             cur.close()
@@ -193,7 +216,46 @@ def edit_idea_content(idea_id: int, content: str) -> None:
         except Exception:
             pass
 
-def delete_idea(idea_id: int) -> None:
+def update_idea(idea_id: str, idea: Idea) -> bool:
+    """
+    Edits an existing idea with a new one by replacing its details.
+
+    This function updates the details of an idea identified by its unique ID. It
+    requires the unique identifier for the idea along with the updated idea
+    object.
+
+    :param idea_id: Unique identifier of the idea.
+    :type idea_id: str
+    :param idea: The updated idea object containing modified details.
+    :type idea: Idea
+    :return: True if successful, False otherwise
+    :rtype: bool
+    """
+    try:
+        conn, cur = get_db_conn(db_name)
+    except Exception as e:
+        print(f"Erro de conexao ao editar Ideia: {e}")
+        return False
+
+    try:
+        cur.execute(
+            "UPDATE ideas SET title = %s, ai_classification = %s WHERE id = %s",
+            (idea.title, idea.ai_classification, idea_id)
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Erro ao editar Ideia: {e}")
+        conn.rollback()
+        return False
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+def delete_idea_by_id(idea_id: str) -> bool:
     """
     Deletes an idea from the database based on the provided idea ID.
 
@@ -203,23 +265,24 @@ def delete_idea(idea_id: int) -> None:
     the process.
 
     :param idea_id: The unique identifier of the idea to be deleted.
-    :type idea_id: int
-    :return: None
-    :rtype: NoneType
+    :type idea_id: str
+    :return: True if successful, False otherwise
+    :rtype: bool
     """
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:
         print(f"Erro de conexao ao deletar Ideia: {e}")
-        return None
-
+        return False
 
     try:
-        cur.execute(f"DELETE FROM ideas WHERE id = {idea_id}")
-        return None
+        cur.execute("DELETE FROM ideas WHERE id = %s", (idea_id,))
+        conn.commit()
+        return True
     except Exception as e:
         print(f"Erro ao deletar Ideia: {e}")
-        return None
+        conn.rollback()
+        return False
     finally:
         try:
             cur.close()

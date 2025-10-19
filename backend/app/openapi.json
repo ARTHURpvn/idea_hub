@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IdeaHub API",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "paths": {
     "/auth/login": {
@@ -240,6 +240,251 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "Ideas"
+        ],
+        "summary": "Listar Ideias",
+        "description": "Obtém todas as ideias do usuário autenticado.",
+        "operationId": "get_ideas_api_idea__get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de ideias retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IdeaResponse"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "title": "Aplicativo de delivery de comida saudável",
+                    "ai_classification": "App delivery comida saudável",
+                    "status": "DRAFT"
+                  },
+                  {
+                    "id": "660e8400-e29b-41d4-a716-446655440001",
+                    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "title": "Plataforma de gestão de projetos",
+                    "ai_classification": "Plataforma gestão projetos",
+                    "status": "ACTIVE"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "500": {
+            "description": "Erro ao obter ideias"
+          }
+        }
+      }
+    },
+    "/api/idea/{idea_id}": {
+      "get": {
+        "tags": [
+          "Ideas"
+        ],
+        "summary": "Obter Ideia",
+        "description": "Obtém uma ideia específica por ID. Apenas o dono da ideia pode acessá-la.",
+        "operationId": "get_idea_api_idea__idea_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "idea_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idea ID"
+            },
+            "description": "ID único da ideia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ideia retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaResponse"
+                },
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                  "title": "Aplicativo de delivery de comida saudável",
+                  "ai_classification": "App delivery comida saudável",
+                  "status": "DRAFT"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "403": {
+            "description": "Você não tem permissão para acessar esta ideia"
+          },
+          "404": {
+            "description": "Ideia não encontrada"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Ideas"
+        ],
+        "summary": "Editar Ideia",
+        "description": "Edita uma ideia existente. Pode atualizar título (regenera AI classification), status ou conteúdo. Apenas o dono pode editar.",
+        "operationId": "edit_idea_api_idea__idea_id__patch",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "idea_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idea ID"
+            },
+            "description": "ID único da ideia"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdeaEdit"
+              },
+              "example": {
+                "title": "Aplicativo de delivery de comida orgânica",
+                "status": "ACTIVE"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ideia editada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaResponse"
+                },
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                  "title": "Aplicativo de delivery de comida orgânica",
+                  "ai_classification": "App delivery comida orgânica",
+                  "status": "ACTIVE"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nenhum campo para editar foi fornecido"
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "403": {
+            "description": "Você não tem permissão para editar esta ideia"
+          },
+          "404": {
+            "description": "Ideia não encontrada"
+          },
+          "500": {
+            "description": "Erro ao editar ideia"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Ideas"
+        ],
+        "summary": "Deletar Ideia",
+        "description": "Deleta uma ideia existente. Apenas o dono pode deletar.",
+        "operationId": "delete_idea_api_idea__idea_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "idea_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idea ID"
+            },
+            "description": "ID único da ideia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ideia deletada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Ideia deletada com sucesso"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "403": {
+            "description": "Você não tem permissão para deletar esta ideia"
+          },
+          "404": {
+            "description": "Ideia não encontrada"
+          },
+          "500": {
+            "description": "Erro ao deletar ideia"
+          }
+        }
       }
     }
   },
@@ -367,6 +612,30 @@
           "status"
         ],
         "title": "IdeaResponse"
+      },
+      "IdeaEdit": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Novo título da ideia (regenera a classificação AI)",
+            "example": "Aplicativo de delivery de comida orgânica"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Novo status da ideia",
+            "example": "ACTIVE"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "Conteúdo bruto da ideia",
+            "example": "Descrição detalhada do projeto..."
+          }
+        },
+        "type": "object",
+        "title": "IdeaEdit"
       },
       "ValidationError": {
         "properties": {

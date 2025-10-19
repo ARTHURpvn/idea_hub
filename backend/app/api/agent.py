@@ -10,4 +10,3 @@ async def chat(message: str):
     result = await run_workflow(inp)
     print(result)
     return result
-
