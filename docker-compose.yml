@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:15
+    container_name: idea_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: idea_forge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    container_name: idea_backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+    command: >
+      bash -c "\
+        echo 'Waiting for Postgres to be ready...' && \
+        until pg_isready -h db -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-idea_forge}; do \
+          echo 'Postgres is not ready - sleeping 1s'; sleep 1; \
+        done && \
+        echo 'Postgres is ready - creating DB/tables' && \
+        python app/database/create_db.py || true && \
+        alembic upgrade head || true && \
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  postgres_data:
