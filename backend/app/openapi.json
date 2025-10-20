@@ -127,19 +127,74 @@
         }
       }
     },
-    "/api/agent/": {
+    "/api/agent/idea/{idea_id}": {
       "post": {
         "tags": [
-          "API"
+          "Chat"
         ],
-        "summary": "Chat",
-        "operationId": "chat_api_agent__post",
+        "summary": "Criar Chat a partir de uma Idea",
+        "description": "Cria um chat ligado a uma ideia (usuário autenticado). Retorna o chat_id.",
+        "operationId": "create_chat_api_agent_idea_idea_id_post",
         "security": [
           {
             "BearerAuth": []
           }
         ],
         "parameters": [
+          {
+            "name": "idea_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idea ID"
+            },
+            "description": "ID único da ideia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCreateResponse"
+                },
+                "example": {
+                  "chat_id": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          }
+        }
+      }
+    },
+    "/api/agent/{chat_id}": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Enviar mensagem ao chat",
+        "description": "Envia uma mensagem do usuário para o chat e retorna a resposta do AI.",
+        "operationId": "post_message_api_agent_chat_id_message_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chat ID"
+            }
+          },
           {
             "name": "message",
             "in": "query",
@@ -154,17 +209,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Resposta do AI retornada com sucesso",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "string"
                 }
               }
             }
-          },
-          "401": {
-            "description": "Token de autenticação ausente ou inválido"
           },
           "422": {
             "description": "Validation Error",
@@ -175,6 +227,92 @@
                 }
               }
             }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Obter Chat",
+        "description": "Obtém uma conversa específica por ID.",
+        "operationId": "get_chat_api_agent_chat_id_get",
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chat ID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat retornado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponseItem"
+                },
+                "example": {
+                  "chat_id": "550e8400-e29b-41d4-a716-446655440000",
+                  "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                  "idea_id": "660e8400-e29b-41d4-a716-446655440001",
+                  "message": "Olá, como posso ajudar?",
+                  "sender": "AI"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao obter chat"
+          }
+        }
+      }
+    },
+    "/api/agent/": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Listar Chats",
+        "description": "Obtém todas as conversas do usuário autenticado.",
+        "operationId": "get_chats_api_agent__get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de chats retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatResponseItem"
+                  }
+                },
+                "example": [
+                  {
+                    "chat_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "idea_id": "660e8400-e29b-41d4-a716-446655440001",
+                    "message": "Olá, como posso ajudar?",
+                    "sender": "AI"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "500": {
+            "description": "Erro ao obter chats"
           }
         }
       }
@@ -669,6 +807,53 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ChatCreateResponse": {
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "title": "Chat ID",
+            "description": "ID único do chat criado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chat_id"
+        ],
+        "title": "ChatCreateResponse"
+      },
+      "ChatResponseItem": {
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "title": "Chat ID"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User ID"
+          },
+          "idea_id": {
+            "type": "string",
+            "title": "Idea ID"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "sender": {
+            "type": "string",
+            "title": "Sender"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chat_id",
+          "user_id",
+          "idea_id",
+          "message",
+          "sender"
+        ],
+        "title": "ChatResponseItem"
       }
     }
   }

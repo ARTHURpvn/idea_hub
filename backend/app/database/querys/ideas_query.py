@@ -46,16 +46,20 @@ def create_idea(idea: Idea) -> str | None:
             "INSERT INTO ideas (user_id, title, ai_classification) VALUES (%s, %s, %s) RETURNING id",
             (idea.user_id, idea.title, idea.ai_classification)
         )
-        conn.commit()
         row = cur.fetchone()
         if row:
             idea_id = str(row[0])
+            conn.commit()
             print(f"Ideia criada com ID: {idea_id}")
             return idea_id
+        conn.rollback()
         return None
     except Exception as e:
         print(f"Erro ao inserir ideia: {e}")
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return None
     finally:
         try:
@@ -78,6 +82,7 @@ def get_all_ideas(user_id: str) -> list[dict] | None:
         specified user.
     :rtype: list[dict] | None
     """
+
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:

@@ -33,6 +33,8 @@ class IdeaEdit(BaseModel):
     status: Optional[str] = None
     content: Optional[str] = None
 
+
+
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=IdeaResponse)
 async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
     """

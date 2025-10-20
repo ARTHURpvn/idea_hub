@@ -2,8 +2,10 @@ from openai import AsyncOpenAI
 from types import SimpleNamespace
 from guardrails.runtime import load_config_bundle, instantiate_guardrails, run_guardrails
 from pydantic import BaseModel
-from agents import RunContextWrapper, Agent, ModelSettings, TResponseInputItem, Runner, RunConfig, trace
+from agents import RunContextWrapper, Agent, ModelSettings, Runner, RunConfig, trace
 from openai.types.shared.reasoning import Reasoning
+
+from ..idea import get_idea_by_id
 
 # Shared client for guardrails and file search
 client = AsyncOpenAI()
@@ -39,7 +41,7 @@ def build_guardrail_fail_output(results):
                     failure[key] = info.get(key)
             failures.append(failure)
     return {"failed": len(failures) > 0, "failures": failures}
-class AgentSchema(BaseModel):
+class EntenderSchema(BaseModel):
   name: str
 
 
@@ -105,42 +107,20 @@ analizar_viabilidade = Agent(
 )
 
 
-class ContextualizarAIdeiaContext:
-  def __init__(self, input_output_text: str):
-    self.input_output_text = input_output_text
-def contextualizar_a_ideia_instructions(run_context: RunContextWrapper[ContextualizarAIdeiaContext], _agent: Agent[ContextualizarAIdeiaContext]):
-  input_output_text = run_context.context.input_output_text
-  return f"""Sua tarefa é analisar cuidadosamente a ideia enviada pelo usuário e construir um contexto coerente, estruturado e informativo sobre ela.O contexto deve incluir objetivo, público-alvo, tecnologias, principais desafios e propósito geral da ideia.
-
-# Ideia
- {input_output_text}"""
-contextualizar_a_ideia = Agent(
-  name="Contextualizar a Ideia",
-  instructions=contextualizar_a_ideia_instructions,
-  model="gpt-4.1-mini",
-  model_settings=ModelSettings(
-    temperature=1,
-    top_p=1,
-    max_tokens=2048,
-    store=True
-  )
-)
-
-
-class AgentContext:
+class EntenderContext:
   def __init__(self, workflow_input_as_text: str):
     self.workflow_input_as_text = workflow_input_as_text
-def agent_instructions(run_context: RunContextWrapper[AgentContext], _agent: Agent[AgentContext]):
+def entender_instructions(run_context: RunContextWrapper[EntenderContext], _agent: Agent[EntenderContext]):
   workflow_input_as_text = run_context.context.workflow_input_as_text
   return f"""Voce precisa entende o que o usuario esta querendo fazer e precisa classificar entre duas coisas exatas: \"criar_ideia\"  | \"tirar_duvida\" |  \"nao_relacionado\".
 Voce vai retornar apenas uma dessas tres frases.
 Voce precisa entender o se ele quer retirar duvida sobre algo relacionado ao projeto ou apenas uma duvida qualquer, quando for uma duvida qualquer voce deve retornar: \"nao_relacionado\"
  {workflow_input_as_text} """
-agent = Agent(
-  name="Agent",
-  instructions=agent_instructions,
+entender = Agent(
+  name="Entender",
+  instructions=entender_instructions,
   model="gpt-5-nano",
-  output_type=AgentSchema,
+  output_type=EntenderSchema,
   model_settings=ModelSettings(
     store=True,
     reasoning=Reasoning(
@@ -298,10 +278,10 @@ selecionar_melhores = Agent(
 )
 
 
-class AvaliarClarezaContext1:
+class AvaliarClarezaContext:
   def __init__(self, input_output_text: str):
     self.input_output_text = input_output_text
-def avaliar_clareza_instructions1(run_context: RunContextWrapper[AvaliarClarezaContext1], _agent: Agent[AvaliarClarezaContext1]):
+def avaliar_clareza_instructions1(run_context: RunContextWrapper[AvaliarClarezaContext], _agent: Agent[AvaliarClarezaContext]):
   input_output_text = run_context.context.input_output_text
   return f"""Função: revisar e refinar a resposta, garantindo fluidez, clareza e adequação ao público final.
 Instrução aprimorada:
@@ -327,22 +307,30 @@ avaliar_clareza1 = Agent(
 )
 
 
-class CriarIdeiaContext:
-  def __init__(self, workflow_input_as_text: str):
-    self.workflow_input_as_text = workflow_input_as_text
-def criar_ideia_instructions(run_context: RunContextWrapper[CriarIdeiaContext], _agent: Agent[CriarIdeiaContext]):
-  workflow_input_as_text = run_context.context.workflow_input_as_text
-  return f"""Extraia, em poucas palavras, a ideia principal expressa pelo usuário em seu input. Não adicione explicações, contexto ou descrições: apenas retorne a essência da ideia do usuário de forma breve e objetiva.
-
-# User Input
-{workflow_input_as_text}
-
-# Output Format
-
-Retorne a resposta em 2 a 8 palavras, sem frases completas. """
-criar_ideia = Agent(
-  name="Criar Ideia",
-  instructions=criar_ideia_instructions,
+class CriarContextoContext:
+  def __init__(self, input_output_parsed_name: str, idea: str = ""):
+    self.input_output_parsed_name = input_output_parsed_name
+    self.idea = idea
+def criar_contexto_instructions(run_context: RunContextWrapper[CriarContextoContext], _agent: Agent[CriarContextoContext]):
+  idea = getattr(run_context.context, "idea", "") or ""
+  return f"""Função: compreender profundamente a ideia: {idea} e gerar um contexto estruturado e completo para servir como base aos demais agentes.
+Instrução aprimorada:
+Sua tarefa é analisar cuidadosamente a ideia enviada pelo usuário e construir um contexto coerente, estruturado e informativo sobre ela.
+O contexto deve incluir:
+Objetivo central da ideia;
+Problema que ela resolve;
+Público-alvo;
+Tecnologias envolvidas;
+Funcionalidades principais;
+Limitações e desafios.
+Regras:
+Seja objetivo, mas completo — sem redundância.
+Não invente fatos; apenas interprete coerentemente o que for implícito.
+Organize as informações em formato claro e lógico, para que outro agente consiga usá-las diretamente.
+Saída esperada: Um resumo estruturado e coeso, que descreva a ideia de forma clara e sirva como base de conhecimento para os próximos agentes."""
+criar_contexto1 = Agent(
+  name="Criar contexto",
+  instructions=criar_contexto_instructions,
   model="gpt-4.1-mini",
   model_settings=ModelSettings(
     temperature=1,
@@ -358,13 +346,29 @@ class WorkflowInput(BaseModel):
 
 
 # Main code entrypoint
-async def run_workflow(workflow_input: WorkflowInput):
+async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
   with trace("New workflow"):
     state = {
 
     }
+
+    try:
+        if idea_id:
+            idea_dict = get_idea_by_id(idea_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+    if idea_dict is None:
+        idea_text = ""
+    else:
+        if isinstance(idea_dict, dict):
+            idea_text = idea_dict.get("ai_classification") or idea_dict.get("title")
+        else:
+            idea_text = getattr(idea_dict, "ai_classification", None) or getattr(idea_dict, "title", None) or str(idea_dict)
+
     workflow = workflow_input.model_dump()
-    conversation_history: list[TResponseInputItem] = [
+    # iniciar conversation_history com estrutura compatível em runtime; removi a anotação de tipo estrita para evitar warnings
+    conversation_history = [
       {
         "role": "user",
         "content": [
@@ -383,8 +387,8 @@ async def run_workflow(workflow_input: WorkflowInput):
     if guardrails_hastripwire:
       return guardrails_output
     else:
-      agent_result_temp = await Runner.run(
-        agent,
+      entender_result_temp = await Runner.run(
+        entender,
         input=[
           *conversation_history
         ],
@@ -392,16 +396,43 @@ async def run_workflow(workflow_input: WorkflowInput):
           "__trace_source__": "agent-builder",
           "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
         }),
-        context=AgentContext(workflow_input_as_text=workflow["input_as_text"])
+        context=EntenderContext(workflow_input_as_text=workflow["input_as_text"])
       )
 
-      conversation_history.extend([item.to_input_item() for item in agent_result_temp.new_items])
+      # conversation_history.extend([item.to_input_item() for item in entender_result_temp.new_items])
 
-      agent_result = {
-        "output_text": agent_result_temp.final_output.json(),
-        "output_parsed": agent_result_temp.final_output.model_dump()
+      entender_result = {
+        "output_text": entender_result_temp.final_output.json(),
+        "output_parsed": entender_result_temp.final_output.model_dump()
       }
-      if agent_result["output_parsed"]["name"] == "tirar_duvida":
+
+      # --- DEBUG / normalization for classification ---
+      try:
+          raw_name = None
+          if isinstance(entender_result.get("output_parsed"), dict):
+              raw_name = entender_result["output_parsed"].get("name")
+          if not raw_name:
+              # fallback to output_text which might be a json string or plain text
+              raw_text = entender_result.get("output_text")
+              if isinstance(raw_text, str):
+                  # remove surrounding quotes if any (final_output.json() may include them)
+                  raw_text_stripped = raw_text.strip().strip('"')
+                  raw_name = raw_text_stripped
+
+          normalized_name = ""
+          if isinstance(raw_name, str):
+              normalized_name = raw_name.strip().lower().replace(" ", "_").replace("-", "_")
+          else:
+              normalized_name = ""
+
+          print(f"DEBUG: entender raw_name={raw_name!r}, normalized_name={normalized_name!r}")
+      except Exception as e:
+          print(f"DEBUG: erro ao normalizar entender result: {e}")
+          normalized_name = ""
+      # --- end debug ---
+
+      # Use the normalized classification for branching
+      if normalized_name == "tirar_duvida" or normalized_name == "tirar_duvidas":
         criar_contexto_result_temp = await Runner.run(
           criar_contexto,
           input=[
@@ -410,8 +441,14 @@ async def run_workflow(workflow_input: WorkflowInput):
           run_config=RunConfig(trace_metadata={
             "__trace_source__": "agent-builder",
             "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
-          })
+          }),
+          context=CriarContextoContext(input_output_parsed_name=entender_result["output_parsed"].get("name") if isinstance(entender_result.get("output_parsed"), dict) else entender_result.get("output_text"), idea=idea_text)
         )
+        print("DEBUG: criar_contexto final_output_as=", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: criar_contexto final_output_model_dump=", getattr(criar_contexto_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
         conversation_history.extend([item.to_input_item() for item in criar_contexto_result_temp.new_items])
 
@@ -429,6 +466,11 @@ async def run_workflow(workflow_input: WorkflowInput):
           }),
           context=VerificarContextoContext(input_output_text=criar_contexto_result["output_text"])
         )
+        print("DEBUG: verificar_contexto final_output_as=", getattr(verificar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: verificar_contexto final_output_model_dump=", getattr(verificar_contexto_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
         conversation_history.extend([item.to_input_item() for item in verificar_contexto_result_temp.new_items])
 
@@ -472,10 +514,24 @@ async def run_workflow(workflow_input: WorkflowInput):
         end_result = {
           "message": avaliar_clareza_result["output_text"]
         }
+        print(f"DEBUG: end_result (tirar_duvida) message_length={len(str(end_result.get('message','')))}")
+        # Proteção: se a mensagem final for apenas a classificação (ex: 'criar ideia'), retorna placeholder
+        try:
+            final_msg = str(end_result.get("message", "")).strip()
+            lower_msg = final_msg.lower()
+            raw_name_cmp = (raw_name or "").strip().lower() if 'raw_name' in locals() else ""
+            if raw_name_cmp and raw_name_cmp in lower_msg:
+                print(f"DEBUG: final message equals or contains raw classification ({raw_name_cmp}), returning fallback")
+                return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
+            if normalized_name and normalized_name.replace("_", " ") in lower_msg:
+                print(f"DEBUG: final message contains normalized classification ({normalized_name}), returning fallback")
+                return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
+        except Exception as e:
+            print(f"DEBUG: error checking final message vs classification: {e}")
         return end_result
-      elif agent_result["output_parsed"]["name"] == "criar_ideia":
-        criar_ideia_result_temp = await Runner.run(
-          criar_ideia,
+      elif normalized_name == "criar_ideia" or normalized_name == "criar_idea" or normalized_name == "criarideia":
+        criar_contexto_result_temp = await Runner.run(
+          criar_contexto1,
           input=[
             *conversation_history
           ],
@@ -483,16 +539,21 @@ async def run_workflow(workflow_input: WorkflowInput):
             "__trace_source__": "agent-builder",
             "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
           }),
-          context=CriarIdeiaContext(workflow_input_as_text=workflow["input_as_text"])
+          context=CriarContextoContext(input_output_parsed_name=entender_result["output_parsed"].get("name") if isinstance(entender_result.get("output_parsed"), dict) else entender_result.get("output_text"), idea=idea_text)
         )
+        print("DEBUG: criar_contexto final_output_as=", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: criar_contexto final_output_model_dump=", getattr(criar_contexto_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
-        conversation_history.extend([item.to_input_item() for item in criar_ideia_result_temp.new_items])
+        conversation_history.extend([item.to_input_item() for item in criar_contexto_result_temp.new_items])
 
-        criar_ideia_result = {
-          "output_text": criar_ideia_result_temp.final_output_as(str)
+        criar_contexto_result = {
+          "output_text": criar_contexto_result_temp.final_output_as(str)
         }
-        contextualizar_a_ideia_result_temp = await Runner.run(
-          contextualizar_a_ideia,
+        verificar_contexto_result_temp = await Runner.run(
+          verificar_contexto,
           input=[
             *conversation_history
           ],
@@ -500,13 +561,18 @@ async def run_workflow(workflow_input: WorkflowInput):
             "__trace_source__": "agent-builder",
             "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
           }),
-          context=ContextualizarAIdeiaContext(input_output_text=criar_ideia_result["output_text"])
+          context=VerificarContextoContext(input_output_text=criar_contexto_result["output_text"])
         )
+        print("DEBUG: verificar_contexto final_output_as=", getattr(verificar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: verificar_contexto final_output_model_dump=", getattr(verificar_contexto_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
-        conversation_history.extend([item.to_input_item() for item in contextualizar_a_ideia_result_temp.new_items])
+        conversation_history.extend([item.to_input_item() for item in verificar_contexto_result_temp.new_items])
 
-        contextualizar_a_ideia_result = {
-          "output_text": contextualizar_a_ideia_result_temp.final_output_as(str)
+        verificar_contexto_result = {
+          "output_text": verificar_contexto_result_temp.final_output_as(str)
         }
         criar_func_result_temp = await Runner.run(
           criar_func,
@@ -517,8 +583,13 @@ async def run_workflow(workflow_input: WorkflowInput):
             "__trace_source__": "agent-builder",
             "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
           }),
-          context=CriarFuncContext(input_output_text=contextualizar_a_ideia_result["output_text"])
+          context=CriarFuncContext(input_output_text=verificar_contexto_result["output_text"])
         )
+        print("DEBUG: criar_func final_output_as=", getattr(criar_func_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: criar_func final_output_model_dump=", getattr(criar_func_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
         conversation_history.extend([item.to_input_item() for item in criar_func_result_temp.new_items])
 
@@ -536,6 +607,11 @@ async def run_workflow(workflow_input: WorkflowInput):
           }),
           context=AnalizarViabilidadeContext(input_output_text=criar_func_result["output_text"])
         )
+        print("DEBUG: analizar_viabilidade final_output_as=", getattr(analizar_viabilidade_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: analizar_viabilidade final_output_model_dump=", getattr(analizar_viabilidade_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
         conversation_history.extend([item.to_input_item() for item in analizar_viabilidade_result_temp.new_items])
 
@@ -553,6 +629,11 @@ async def run_workflow(workflow_input: WorkflowInput):
           }),
           context=SelecionarMelhoresContext(input_output_text=analizar_viabilidade_result["output_text"])
         )
+        print("DEBUG: selecionar_melhores final_output_as=", getattr(selecionar_melhores_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: selecionar_melhores final_output_model_dump=", getattr(selecionar_melhores_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
         conversation_history.extend([item.to_input_item() for item in selecionar_melhores_result_temp.new_items])
 
@@ -568,8 +649,13 @@ async def run_workflow(workflow_input: WorkflowInput):
             "__trace_source__": "agent-builder",
             "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
           }),
-          context=AvaliarClarezaContext1(input_output_text=selecionar_melhores_result["output_text"])
+          context=AvaliarClarezaContext(input_output_text=selecionar_melhores_result["output_text"])
         )
+        print("DEBUG: avaliar_clareza final_output_as=", getattr(avaliar_clareza_result_temp, 'final_output_as', lambda t: None)(str))
+        try:
+            print("DEBUG: avaliar_clareza final_output_model_dump=", getattr(avaliar_clareza_result_temp, 'final_output', None).model_dump())
+        except Exception:
+            pass
 
         conversation_history.extend([item.to_input_item() for item in avaliar_clareza_result_temp.new_items])
 
@@ -579,9 +665,29 @@ async def run_workflow(workflow_input: WorkflowInput):
         end_result = {
           "message": avaliar_clareza_result["output_text"]
         }
+        print(f"DEBUG: end_result (criar_ideia) message_length={len(str(end_result.get('message','')))}")
+        # guard against returning a raw short classification (e.g. 'criar ideia') — ensure message is sufficiently descriptive
+        if isinstance(end_result.get("message"), str) and len(end_result.get("message")) < 30:
+            print(f"DEBUG: final message is suspiciously short: {end_result.get('message')!r}")
+            # return a more helpful placeholder indicating pipeline likely failed
+            return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
+        # Extra protection: if final message matches or contains the classification label, return fallback
+        try:
+            final_msg = str(end_result.get("message", "")).strip()
+            lower_msg = final_msg.lower()
+            raw_name_cmp = (raw_name or "").strip().lower() if 'raw_name' in locals() else ""
+            if raw_name_cmp and raw_name_cmp in lower_msg:
+                print(f"DEBUG: final message equals or contains raw classification ({raw_name_cmp}), returning fallback")
+                return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
+            if normalized_name and normalized_name.replace("_", " ") in lower_msg:
+                print(f"DEBUG: final message contains normalized classification ({normalized_name}), returning fallback")
+                return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
+        except Exception as e:
+            print(f"DEBUG: error checking final message vs classification: {e}")
         return end_result
       else:
         end_result = {
           "message": "O chat nao foi feito para responder duvidas do dia a dia"
         }
+        print(f"DEBUG: classification not matched ({normalized_name}), returning default message")
         return end_result
