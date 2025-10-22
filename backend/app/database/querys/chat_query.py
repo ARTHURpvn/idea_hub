@@ -129,7 +129,7 @@ def get_idea_by_chat_id(chat_id: str):
         cur.execute("SELECT idea_id FROM ai_chats WHERE id = %s", (chat_id,))
         idea = cur.fetchone()
         if idea:
-            return idea[0]
+            return str(idea[0])
         return None
     except Exception as e:
         print(f"Erro ao pegar idea: {e}")
@@ -277,5 +277,3 @@ def get_last_ai_message(chat_id: str) -> str | None:
             conn.close()
         except Exception as e:
             print(f"Erro ao fechar conexao: {e}")
-
-

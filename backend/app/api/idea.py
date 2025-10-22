@@ -4,6 +4,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel
 
 from .chat.gen_classification import run_classification
+from .chat.gen_categories import create_categories
 from ..database.querys.auth_query import check_token
 from ..database.querys.ideas_query import (
     create_idea,
@@ -41,6 +42,7 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
     Cria uma nova ideia. O user_id é extraído automaticamente do token JWT.
     A classificação AI é gerada automaticamente.
     """
+
     # Extrair e validar token
     try:
         token = authorization.replace("Bearer ", "").strip()
@@ -77,12 +79,21 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
         print(f"Erro ao classificar Idea: {e}")
         ai_classification = "Não classificado"
 
+    try:
+        # Pass ai_classification as context/input and the idea title as the primary idea
+        ai_categories = await create_categories(ai_classification, idea_data.title)
+
+    except Exception as e:
+        print(f"Erro ao criar Tags: {e}")
+        ai_categories = []
+
     # Criar a ideia no banco
     try:
         idea = IdeaModel(
             user_id=user_id,
             title=idea_data.title,
-            ai_classification=ai_classification
+            ai_classification=ai_classification,
+            categories=ai_categories
         )
 
         idea_id = create_idea(idea)
@@ -92,6 +103,7 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao criar ideia no banco de dados"
             )
+
 
         return IdeaResponse(
             id=idea_id,

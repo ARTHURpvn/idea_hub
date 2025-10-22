@@ -308,12 +308,14 @@ avaliar_clareza1 = Agent(
 
 
 class CriarContextoContext:
-  def __init__(self, input_output_parsed_name: str, idea: str = ""):
+  def __init__(self, input_output_parsed_name: str, idea: str = "", context: str = ""):
     self.input_output_parsed_name = input_output_parsed_name
     self.idea = idea
+    self.context = context
 def criar_contexto_instructions(run_context: RunContextWrapper[CriarContextoContext], _agent: Agent[CriarContextoContext]):
   idea = getattr(run_context.context, "idea", "") or ""
-  return f"""Função: compreender profundamente a ideia: {idea} e gerar um contexto estruturado e completo para servir como base aos demais agentes.
+  context = getattr(run_context.context, "context", "") or ""
+  return f"""Função: compreender profundamente a ideia: {idea}, analisando as anotacoes do usuario: {context} e gerar um contexto estruturado e completo para servir como base aos demais agentes.
 Instrução aprimorada:
 Sua tarefa é analisar cuidadosamente a ideia enviada pelo usuário e construir um contexto coerente, estruturado e informativo sobre ela.
 O contexto deve incluir:
@@ -363,8 +365,10 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
     else:
         if isinstance(idea_dict, dict):
             idea_text = idea_dict.get("ai_classification") or idea_dict.get("title")
+            idea_context = idea_dict.get("raw_content")
         else:
             idea_text = getattr(idea_dict, "ai_classification", None) or getattr(idea_dict, "title", None) or str(idea_dict)
+            idea_context = getattr(idea_dict, "raw_content", None) or ""
 
     workflow = workflow_input.model_dump()
     # iniciar conversation_history com estrutura compatível em runtime; removi a anotação de tipo estrita para evitar warnings
@@ -442,7 +446,7 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
             "__trace_source__": "agent-builder",
             "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
           }),
-          context=CriarContextoContext(input_output_parsed_name=entender_result["output_parsed"].get("name") if isinstance(entender_result.get("output_parsed"), dict) else entender_result.get("output_text"), idea=idea_text)
+          context=CriarContextoContext(input_output_parsed_name=entender_result["output_parsed"].get("name") if isinstance(entender_result.get("output_parsed"), dict) else entender_result.get("output_text"), idea=idea_text, context=idea_context)
         )
         print("DEBUG: criar_contexto final_output_as=", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
         try:

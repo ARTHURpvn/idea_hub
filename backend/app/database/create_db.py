@@ -10,7 +10,7 @@ user = os.getenv("POSTGRES_USER", "postgres")
 password = os.getenv("POSTGRES_PASSWORD", "postgres")
 host = os.getenv("POSTGRES_HOST", "localhost")
 port = os.getenv("POSTGRES_PORT", "5432")
-db_name = os.getenv("POSTGRES_DB", "idea_hub_db")
+db_name = os.getenv("POSTGRES_DB", "idea_forge")
 
 
 def ensure_database_and_tables():
