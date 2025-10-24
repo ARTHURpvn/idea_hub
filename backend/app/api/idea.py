@@ -21,6 +21,8 @@ router = APIRouter()
 
 class IdeaCreate(BaseModel):
     title: str
+    tags: list[str]
+
 
 class IdeaResponse(BaseModel):
     id: str
@@ -72,7 +74,6 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Gerar classificação AI (async - não bloqueia)
     try:
         ai_classification = await run_classification(idea_data.title)
     except Exception as e:
@@ -93,7 +94,8 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
             user_id=user_id,
             title=idea_data.title,
             ai_classification=ai_classification,
-            categories=ai_categories
+            categories=ai_categories,
+            tags=idea_data.tags
         )
 
         idea_id = create_idea(idea)

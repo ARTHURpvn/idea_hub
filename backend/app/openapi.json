@@ -237,6 +237,11 @@
         "summary": "Obter Chat",
         "description": "Obtém uma conversa específica por ID.",
         "operationId": "get_chat_api_agent_chat_id_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "chat_id",
@@ -337,7 +342,8 @@
                 "$ref": "#/components/schemas/IdeaCreate"
               },
               "example": {
-                "title": "Aplicativo de delivery de comida saudável para universitários"
+                "title": "Aplicativo de delivery de comida saudável para universitários",
+                "tags": ["teste", "jogo", "git"]
               }
             }
           },
