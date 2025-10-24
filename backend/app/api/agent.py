@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 from ..api.chat.chatkit import run_workflow, WorkflowInput
 from ..database.querys.auth_query import check_token
@@ -17,14 +17,20 @@ class ChatCreateResponse(BaseModel):
     chat_id: str
 
 class MessageResponse(BaseModel):
+    message_id: Optional[str] = None
     message: str
+    sender: Optional[str] = None
+
+
+class MessageItem(BaseModel):
+    message_id: str
+    message: str
+    sender: str
 
 class ChatResponseItem(BaseModel):
     chat_id: str
-    user_id: str
-    idea_id: str
-    message: str
-    sender: str
+    idea_id: Optional[str] = None
+    messages: List[MessageItem] = []
 
 
 @router.post("/idea/{idea_id}", status_code=200, response_model=ChatCreateResponse, tags=["Chat"])
@@ -137,15 +143,17 @@ def list_chats(authorization: str = Header(...)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao obter chats")
 
 
-@router.get("/{chat_id}", status_code=200, response_model=ChatResponseItem, tags=["Chat"])
-def get_chat(chat_id: str):
+@router.get("/{chat_id}", status_code=200, tags=["Chat"])
+def get_chat_by_id(chat_id: str):
+    from ..database.querys.chat_query import get_chat as get_chat_from_db
+
     try:
-        chats = get_chat(chat_id)
-        if chats is None:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao obter chats")
-        return chats
+        chat_data = get_chat_from_db(chat_id)
+        if chat_data is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat não encontrado")
+        return chat_data
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Erro ao pegar chats: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao obter chats")
+        print(f"Erro ao pegar chat: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao obter chat")

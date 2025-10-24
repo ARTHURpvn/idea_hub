@@ -1,3 +1,4 @@
+import json
 import os
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -163,27 +164,70 @@ def get_all_chats(user_id: str):
     try:
         # Seleciona colunas explicitamente e usa parâmetro para evitar SQL injection
         cur.execute(
-            "SELECT ai_chats.id, ai_chats.user_id, ai_chats.idea_id, ai_messages.message, ai_messages.sender "
-            "FROM ai_chats "
-            "INNER JOIN ai_messages ON ai_chats.id = ai_messages.chat_id "
-            "WHERE ai_chats.user_id = %s "
-            "ORDER BY ai_messages.id DESC",
+            """
+            SELECT ai_chats.id, ai_chats.idea_id, ai_messages.id, ai_messages.message, ai_messages.sender 
+            FROM ai_chats 
+            INNER JOIN ai_messages ON ai_chats.id = ai_messages.chat_id 
+            WHERE ai_chats.user_id = %s 
+            ORDER BY ai_chats.id DESC, ai_messages.id ASC
+            """,
             (user_id,)
         )
         rows = cur.fetchall()
+
+        if not rows:
+            return []
+
         chats = []
+        current_chat_id = None
+        current_idea_id = None
+        current_messages = []
+
         for row in rows:
-            chats.append({
-                "chat_id": str(row[0]),
-                "user_id": str(row[1]),
-                "idea_id": str(row[2]) if row[2] is not None else None,
-                "message": row[3],
-                "sender": row[4]
+            chat_id = str(row[0])
+            idea_id = str(row[1]) if row[1] is not None else None
+            message_id = str(row[2])
+            message = row[3]
+            sender = row[4]
+
+
+            # Se mudou de chat, salva o chat anterior
+            if current_chat_id is not None and chat_id != current_chat_id:
+                print(f"current_messages: {current_messages}")
+
+                chats.append({
+                    "chat_id": current_chat_id,
+                    "idea_id": current_idea_id,
+                    "messages": current_messages
+                })
+                current_messages = []
+
+            # Atualiza o chat atual
+            current_chat_id = chat_id
+            current_idea_id = idea_id
+            current_messages.append({
+                "message_id": message_id,
+                "message": message,
+                "sender": sender
             })
+
+            print(f"current_chat_id: {current_chat_id}")
+            print(f"current_idea_id: {current_idea_id}")
+
+        # Adiciona o último chat
+        if current_chat_id is not None:
+            chats.append({
+                "chat_id": current_chat_id,
+                "idea_id": current_idea_id,
+                "messages": current_messages
+            })
+
         return chats
 
     except Exception as e:
         print(f"Erro ao pegar chats: {e}")
+        import traceback
+        traceback.print_exc()
         return None
     finally:
         try:
