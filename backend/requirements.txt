@@ -11,3 +11,5 @@ alembic
 openai
 openai-guardrails
 openai-agents
+pillow
+matplotlib

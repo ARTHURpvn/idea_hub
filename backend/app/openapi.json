@@ -436,6 +436,180 @@
         }
       }
     },
+    "/api/roadmap/create": {
+      "post": {
+        "tags": [
+          "Roadmap"
+        ],
+        "summary": "Criar Roadmap",
+        "description": "Cria um roadmap completo para uma ideia existente. O sistema gera automaticamente os passos (steps), tarefas (tasks) e uma imagem visual do roadmap usando IA.",
+        "operationId": "create_roadmap_api_roadmap_create_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "idea_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idea ID"
+            },
+            "description": "ID único da ideia para gerar o roadmap",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          {
+            "name": "exported_to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Exported To"
+            },
+            "description": "Plataforma de destino para exportação do roadmap",
+            "example": "notion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roadmap criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapCreateResponse"
+                },
+                "example": {
+                  "roadmap_id": "660e8400-e29b-41d4-a716-446655440001",
+                  "image_generated": true,
+                  "image_path": "/api/roadmap/660e8400-e29b-41d4-a716-446655440001/image"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "404": {
+            "description": "Ideia não encontrada"
+          },
+          "500": {
+            "description": "Erro ao criar roadmap no banco de dados ou ao gerar conteúdo do roadmap"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roadmap/{roadmap_id}": {
+      "get": {
+        "tags": [
+          "Roadmap"
+        ],
+        "summary": "Obter Roadmap",
+        "description": "Retorna os dados completos do roadmap incluindo todos os steps e tasks.",
+        "operationId": "get_roadmap_api_roadmap_roadmap_id_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roadmap_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Roadmap ID"
+            },
+            "description": "ID único do roadmap",
+            "example": "660e8400-e29b-41d4-a716-446655440001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roadmap retornado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "404": {
+            "description": "Roadmap não encontrado"
+          },
+          "500": {
+            "description": "Erro ao buscar roadmap"
+          }
+        }
+      }
+    },
+    "/api/roadmap/{roadmap_id}/image": {
+      "get": {
+        "tags": [
+          "Roadmap"
+        ],
+        "summary": "Obter Imagem do Roadmap",
+        "description": "Retorna a imagem visual do roadmap em formato PNG. Se a imagem não existir, será gerada automaticamente.",
+        "operationId": "get_roadmap_image_api_roadmap_roadmap_id_image_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roadmap_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Roadmap ID"
+            },
+            "description": "ID único do roadmap",
+            "example": "660e8400-e29b-41d4-a716-446655440001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Imagem do roadmap retornada com sucesso",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "404": {
+            "description": "Roadmap não encontrado ou sem steps para gerar imagem"
+          },
+          "500": {
+            "description": "Erro ao gerar ou buscar imagem"
+          }
+        }
+      }
+    },
     "/api/idea/{idea_id}": {
       "get": {
         "tags": [
@@ -860,6 +1034,155 @@
           "sender"
         ],
         "title": "ChatResponseItem"
+      },
+      "RoadmapResponse": {
+        "properties": {
+          "roadmap_id": {
+            "type": "string",
+            "title": "Roadmap ID",
+            "description": "ID único do roadmap criado (UUID)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roadmap_id"
+        ],
+        "title": "RoadmapResponse"
+      },
+      "RoadmapCreateResponse": {
+        "properties": {
+          "roadmap_id": {
+            "type": "string",
+            "title": "Roadmap ID",
+            "description": "ID único do roadmap criado (UUID)"
+          },
+          "image_generated": {
+            "type": "boolean",
+            "title": "Image Generated",
+            "description": "Indica se a imagem foi gerada com sucesso"
+          },
+          "image_path": {
+            "type": "string",
+            "title": "Image Path",
+            "description": "Caminho para acessar a imagem do roadmap"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roadmap_id",
+          "image_generated"
+        ],
+        "title": "RoadmapCreateResponse"
+      },
+      "RoadmapDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "ID",
+            "description": "ID único do roadmap"
+          },
+          "idea_id": {
+            "type": "string",
+            "title": "Idea ID",
+            "description": "ID da ideia associada"
+          },
+          "exported_to": {
+            "type": "string",
+            "title": "Exported To",
+            "description": "Plataforma de exportação"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadmapStep"
+            },
+            "title": "Steps",
+            "description": "Lista de passos do roadmap"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "idea_id",
+          "steps"
+        ],
+        "title": "RoadmapDetail"
+      },
+      "RoadmapStep": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "ID",
+            "description": "ID único do step"
+          },
+          "step_order": {
+            "type": "integer",
+            "title": "Step Order",
+            "description": "Ordem do step no roadmap"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Título do step"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Descrição do step"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadmapTask"
+            },
+            "title": "Tasks",
+            "description": "Lista de tarefas do step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "step_order",
+          "title",
+          "description",
+          "tasks"
+        ],
+        "title": "RoadmapStep"
+      },
+      "RoadmapTask": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "ID",
+            "description": "ID único da task"
+          },
+          "task_order": {
+            "type": "integer",
+            "title": "Task Order",
+            "description": "Ordem da task dentro do step"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Descrição da tarefa"
+          },
+          "suggested_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Tools",
+            "description": "Ferramentas sugeridas para a tarefa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "task_order",
+          "description",
+          "suggested_tools"
+        ],
+        "title": "RoadmapTask"
       }
     }
   }
