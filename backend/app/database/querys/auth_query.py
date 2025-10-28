@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from passlib.context import CryptContext
@@ -117,7 +119,6 @@ def login_query(login_data: Login) -> dict | None:
         except Exception:
             pass
 
-
 def register_query(register_data: Register) -> str | None:
     """Insere um novo usuário. Retorna o id (UUID) do usuário criado ou None em caso de erro.
     A senha será hasheada antes de salvar. Não retorna JWT.
@@ -154,3 +155,22 @@ def register_query(register_data: Register) -> str | None:
             conn.close()
         except Exception:
             pass
+
+def get_user_query(user_id: str) -> Optional[dict]:
+    try:
+        conn, cur = get_db_conn(db_name)
+    except Exception as e:
+        print(f"Erro de conexão ao tentar fazer login: {e}")
+        return {"status": "error", "message": "db_connection_error"}
+
+
+    try:
+        cur.execute("SELECT email, name FROM users WHERE id = %s", (user_id,))
+        user_record = cur.fetchone()
+        if not user_record:
+            return None
+        email, name = user_record
+        return {"email": email, "name": name}
+    except Exception as e:
+        print(f"Erro na query de login: {e}")
+        return None

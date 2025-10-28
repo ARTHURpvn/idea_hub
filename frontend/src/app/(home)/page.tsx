@@ -1,9 +1,9 @@
-import LoginPage from "../(auth)/login/page";
-
+"use client"
 const Home = () => {
+    const name = localStorage.getItem('name');
   return (
     <div className="flex flex-col items-center justify-center h-screen w-full">
-        <LoginPage />
+        <p>Olá {name}</p>
     </div>
   );
 }

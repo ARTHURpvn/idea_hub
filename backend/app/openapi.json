@@ -32,25 +32,54 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "access_token": {
-                      "type": "string"
-                    },
-                    "token_type": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/LoginSuccess"
                 },
                 "example": {
                   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                  "token_type": "bearer"
+                  "name": "João Silva",
+                  "email": "usuario@exemplo.com"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email não cadastrado ou request inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "errors": [{ "field": "email", "message": "Email não cadastrado" }]
                 }
               }
             }
           },
           "401": {
-            "description": "Email ou senha incorretos"
+            "description": "Senha incorreta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "errors": [{ "field": "password", "message": "Senha incorreta" }]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "errors": [{ "field": "non_field", "message": "Erro interno no login" }]
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -93,16 +122,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "email": {
-                      "type": "string",
-                      "format": "email"
-                    }
-                  }
+                  "$ref": "#/components/schemas/RegisterSuccess"
                 },
                 "example": {
                   "id": "123e4567-e89b-12d3-a456-426614174000",
@@ -112,7 +132,17 @@
             }
           },
           "400": {
-            "description": "Senha inválida ou email já em uso"
+            "description": "Senha inválida ou email já em uso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "errors": [{ "field": "password", "message": "Senha inválida: deve ter ao menos 8 caracteres, conter letras e números." }]
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -121,6 +151,80 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Valida token",
+        "operationId": "token_auth_token_post",
+        "security": [ { "BearerAuth": [] } ],
+        "responses": {
+          "200": {
+            "description": "Token válido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" },
+                "example": { "validated": true }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido ou expirado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+                "example": { "errors": [{ "field": "token", "message": "Token inválido ou expirado" }] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Obter dados do usuário autenticado",
+        "operationId": "me_auth_me_post",
+        "security": [ { "BearerAuth": [] } ],
+        "responses": {
+          "200": {
+            "description": "Dados do usuário",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MeResponse" },
+                "example": { "name": "João Silva", "email": "usuario@exemplo.com" }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido ou expirado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+                "example": { "errors": [{ "field": "token", "message": "Token inválido ou expirado" }] }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+                "example": { "errors": [{ "field": "email", "message": "Usuário não encontrado" }] }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+                "example": { "errors": [{ "field": "non_field", "message": "Erro ao obter dados do usuário" }] }
               }
             }
           }
@@ -885,12 +989,16 @@
             "title": "Title",
             "description": "Título ou descrição da ideia",
             "example": "Aplicativo de delivery de comida saudável para universitários"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "title": "Tags",
+            "example": ["teste", "app"]
           }
         },
         "type": "object",
-        "required": [
-          "title"
-        ],
+        "required": ["title"],
         "title": "IdeaCreate"
       },
       "IdeaResponse": {
@@ -922,13 +1030,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "title",
-          "ai_classification",
-          "status"
-        ],
+        "required": ["id", "user_id", "title", "ai_classification", "status"],
         "title": "IdeaResponse"
       },
       "IdeaEdit": {
@@ -942,7 +1044,6 @@
           "status": {
             "type": "string",
             "title": "Status",
-            "description": "Novo status da ideia",
             "example": "ACTIVE"
           },
           "content": {
@@ -955,37 +1056,76 @@
         "type": "object",
         "title": "IdeaEdit"
       },
+      "LoginSuccess": {
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string" },
+          "name": { "type": "string", "nullable": true },
+          "email": { "type": "string", "format": "email", "nullable": true }
+        },
+        "type": "object",
+        "required": ["access_token", "token_type"],
+        "title": "LoginSuccess"
+      },
+      "RegisterSuccess": {
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" }
+        },
+        "type": "object",
+        "required": ["id", "email"],
+        "title": "RegisterSuccess"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "field": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "type": "object",
+        "required": ["field", "message"],
+        "title": "ErrorDetail"
+      },
+      "ValidationErrorResponse": {
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ErrorDetail" }
+          }
+        },
+        "type": "object",
+        "required": ["errors"],
+        "title": "ValidationErrorResponse"
+      },
+      "TokenResponse": {
+        "properties": {
+          "validated": { "type": "boolean" }
+        },
+        "type": "object",
+        "required": ["validated"],
+        "title": "TokenResponse"
+      },
+      "MeResponse": {
+        "properties": {
+          "name": { "type": "string", "nullable": true },
+          "email": { "type": "string", "format": "email", "nullable": true }
+        },
+        "type": "object",
+        "title": "MeResponse"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
             "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
+              "anyOf": [ { "type": "string" }, { "type": "integer" } ]
             },
             "type": "array",
             "title": "Location"
           },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          }
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
         },
         "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError"
       },
       "ChatCreateResponse": {
@@ -997,191 +1137,71 @@
           }
         },
         "type": "object",
-        "required": [
-          "chat_id"
-        ],
+        "required": ["chat_id"],
         "title": "ChatCreateResponse"
       },
       "ChatResponseItem": {
         "properties": {
-          "chat_id": {
-            "type": "string",
-            "title": "Chat ID"
-          },
-          "user_id": {
-            "type": "string",
-            "title": "User ID"
-          },
-          "idea_id": {
-            "type": "string",
-            "title": "Idea ID"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "sender": {
-            "type": "string",
-            "title": "Sender"
-          }
+          "chat_id": { "type": "string", "title": "Chat ID" },
+          "user_id": { "type": "string", "title": "User ID" },
+          "idea_id": { "type": "string", "title": "Idea ID" },
+          "message": { "type": "string", "title": "Message" },
+          "sender": { "type": "string", "title": "Sender" }
         },
         "type": "object",
-        "required": [
-          "chat_id",
-          "user_id",
-          "idea_id",
-          "message",
-          "sender"
-        ],
+        "required": ["chat_id", "user_id", "idea_id", "message", "sender"],
         "title": "ChatResponseItem"
       },
       "RoadmapResponse": {
         "properties": {
-          "roadmap_id": {
-            "type": "string",
-            "title": "Roadmap ID",
-            "description": "ID único do roadmap criado (UUID)"
-          }
+          "roadmap_id": { "type": "string", "title": "Roadmap ID", "description": "ID único do roadmap criado (UUID)" }
         },
         "type": "object",
-        "required": [
-          "roadmap_id"
-        ],
+        "required": ["roadmap_id"],
         "title": "RoadmapResponse"
       },
       "RoadmapCreateResponse": {
         "properties": {
-          "roadmap_id": {
-            "type": "string",
-            "title": "Roadmap ID",
-            "description": "ID único do roadmap criado (UUID)"
-          },
-          "image_generated": {
-            "type": "boolean",
-            "title": "Image Generated",
-            "description": "Indica se a imagem foi gerada com sucesso"
-          },
-          "image_path": {
-            "type": "string",
-            "title": "Image Path",
-            "description": "Caminho para acessar a imagem do roadmap"
-          }
+          "roadmap_id": { "type": "string", "title": "Roadmap ID", "description": "ID único do roadmap criado (UUID)" },
+          "image_generated": { "type": "boolean", "title": "Image Generated", "description": "Indica se a imagem foi gerada com sucesso" },
+          "image_path": { "type": "string", "title": "Image Path", "description": "Caminho para acessar a imagem do roadmap" }
         },
         "type": "object",
-        "required": [
-          "roadmap_id",
-          "image_generated"
-        ],
+        "required": ["roadmap_id", "image_generated"],
         "title": "RoadmapCreateResponse"
       },
       "RoadmapDetail": {
         "properties": {
-          "id": {
-            "type": "string",
-            "title": "ID",
-            "description": "ID único do roadmap"
-          },
-          "idea_id": {
-            "type": "string",
-            "title": "Idea ID",
-            "description": "ID da ideia associada"
-          },
-          "exported_to": {
-            "type": "string",
-            "title": "Exported To",
-            "description": "Plataforma de exportação"
-          },
-          "steps": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoadmapStep"
-            },
-            "title": "Steps",
-            "description": "Lista de passos do roadmap"
-          }
+          "id": { "type": "string", "title": "ID", "description": "ID único do roadmap" },
+          "idea_id": { "type": "string", "title": "Idea ID", "description": "ID da ideia associada" },
+          "exported_to": { "type": "string", "title": "Exported To", "description": "Plataforma de exportação" },
+          "steps": { "type": "array", "items": { "$ref": "#/components/schemas/RoadmapStep" }, "title": "Steps", "description": "Lista de passos do roadmap" }
         },
         "type": "object",
-        "required": [
-          "id",
-          "idea_id",
-          "steps"
-        ],
+        "required": ["id", "idea_id", "steps"],
         "title": "RoadmapDetail"
       },
       "RoadmapStep": {
         "properties": {
-          "id": {
-            "type": "string",
-            "title": "ID",
-            "description": "ID único do step"
-          },
-          "step_order": {
-            "type": "integer",
-            "title": "Step Order",
-            "description": "Ordem do step no roadmap"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title",
-            "description": "Título do step"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "description": "Descrição do step"
-          },
-          "tasks": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoadmapTask"
-            },
-            "title": "Tasks",
-            "description": "Lista de tarefas do step"
-          }
+          "id": { "type": "string", "title": "ID", "description": "ID único do step" },
+          "step_order": { "type": "integer", "title": "Step Order", "description": "Ordem do step no roadmap" },
+          "title": { "type": "string", "title": "Title", "description": "Título do step" },
+          "description": { "type": "string", "title": "Description", "description": "Descrição do step" },
+          "tasks": { "type": "array", "items": { "$ref": "#/components/schemas/RoadmapTask" }, "title": "Tasks", "description": "Lista de tarefas do step" }
         },
         "type": "object",
-        "required": [
-          "id",
-          "step_order",
-          "title",
-          "description",
-          "tasks"
-        ],
+        "required": ["id", "step_order", "title", "description", "tasks"],
         "title": "RoadmapStep"
       },
       "RoadmapTask": {
         "properties": {
-          "id": {
-            "type": "string",
-            "title": "ID",
-            "description": "ID único da task"
-          },
-          "task_order": {
-            "type": "integer",
-            "title": "Task Order",
-            "description": "Ordem da task dentro do step"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "description": "Descrição da tarefa"
-          },
-          "suggested_tools": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Suggested Tools",
-            "description": "Ferramentas sugeridas para a tarefa"
-          }
+          "id": { "type": "string", "title": "ID", "description": "ID único da task" },
+          "task_order": { "type": "integer", "title": "Task Order", "description": "Ordem da task dentro do step" },
+          "description": { "type": "string", "title": "Description", "description": "Descrição da tarefa" },
+          "suggested_tools": { "type": "array", "items": { "type": "string" }, "title": "Suggested Tools", "description": "Ferramentas sugeridas para a tarefa" }
         },
         "type": "object",
-        "required": [
-          "id",
-          "task_order",
-          "description",
-          "suggested_tools"
-        ],
+        "required": ["id", "task_order", "description", "suggested_tools"],
         "title": "RoadmapTask"
       }
     }
