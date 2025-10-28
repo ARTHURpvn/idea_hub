@@ -7,33 +7,32 @@ interface LoginRequest {
     password: string,
 }
 
+export interface LoginResponse {
+    data: {
+        access_token: string,
+        name: string,
+        email: string,
+    }
+}
+
 interface RegisterRequest {
+
     email: string,
     name: string,
     password: string,
 }
 
-export const req_login = async(data: LoginRequest) => {
+export const req_login = async(data: LoginRequest): Promise<LoginResponse> => {
     const loadingId = toast.loading("Fazendo login...")
 
     try {
-        const res = await axios.post("http://localhost:8000/auth/login", {
+        const res: LoginResponse = await axios.post("http://localhost:8000/auth/login", {
             email: data.email,
             password: data.password,
         })
 
         toast.dismiss(loadingId)
         toast.success("Login realizado com sucesso.")
-        setCookie("token", res.data.access_token, {
-            maxAge: 60 * 60 * 24 * 30, // 30 days
-            path: "/",
-            sameSite: "strict",
-            httpOnly: true,
-            secure: true
-        })
-        localStorage.setItem("name", res.data.name)
-        localStorage.setItem("email", res.data.email)
-
         window.location.href = "/"
         return res
     } catch (error: any) {
@@ -47,8 +46,13 @@ export const req_login = async(data: LoginRequest) => {
         } else {
             toast.error("Erro ao conectar com o servidor.")
         }
-
-        return false
+    }
+    return {
+        data: {
+            access_token: "",
+            name: "",
+            email: "",
+        }
     }
 }
 

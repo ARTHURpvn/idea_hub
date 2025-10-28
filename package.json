@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "cookies-next": "^6.1.1",
-    "zustand": "^5.0.8"
-  }
-}

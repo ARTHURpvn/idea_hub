@@ -23,8 +23,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState } from "react"
 import { EyeClosedIcon, EyeIcon } from "lucide-react"
-import {req_register} from "../../../requests/auth";
 import Link from "next/link"
+import { useAuthStore } from "@/zustand_store/auth_store"
 
 const formSchema = z.object({
     email: z.email({
@@ -91,10 +91,10 @@ const LoginPage = () => {
             password: ""
         },
     })
-
+    const {register} = useAuthStore.getState()
     async function onSubmit(values: z.infer<typeof formSchema>) {
-        const res = await req_register(values)
-        if(res != false) form.reset()
+        const res = await register(values.name, values.email, values.password)
+        if(!res) form.reset()
     }
     return (
         <div className="flex items-center justify-center h-screen">
