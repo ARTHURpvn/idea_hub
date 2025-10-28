@@ -67,46 +67,49 @@ def check_token(token: str) -> str | None:
         except Exception:
             pass
 
-def login_query(login_data: Login) -> str | None:
-    """Verifica o usuário e retorna o JWT se as credenciais forem válidas.
+def login_query(login_data: Login) -> dict | None:
+    """Verifica o usuário e retorna um dicionário com status e token (quando sucesso).
 
-    Retorna:
-        str: O token JWT em caso de sucesso.
-        None: Em caso de falha de conexão ou credenciais inválidas.
+    Retornos possíveis:
+        {"status": "success", "token": <jwt>} - credenciais válidas
+        {"status": "no_user"} - email não encontrado
+        {"status": "wrong_password"} - email existe, senha incorreta
+        {"status": "error", "message": "..."} - erro interno
     """
     try:
         conn, cur = get_db_conn(db_name)
     except Exception as e:
         print(f"Erro de conexão ao tentar fazer login: {e}")
-        return None
+        return {"status": "error", "message": "db_connection_error"}
 
     try:
         cur.execute("SELECT id, email, name, password FROM users WHERE email = %s", (login_data.email,))
         user_record = cur.fetchone()
 
-        if user_record:
-            user_id, email, name, stored_password = user_record
-            # verifica hash
-            try:
-                if pwd_context.verify(login_data.password, stored_password):
-                    from ..utils.JWT import create_access_token
-                    user_dict = {
-                        "sub": str(user_id),
-                        "email": email,
-                        "name": name,
-                    }
-                    return create_access_token(user_dict)
-                else:
-                    return None
-            except Exception as e:
-                print(f"Erro ao verificar senha: {e}")
-                return None
-        else:
-            return None
+        if not user_record:
+            return {"status": "no_user"}
+
+        user_id, email, name, stored_password = user_record
+        # verifica hash
+        try:
+            if pwd_context.verify(login_data.password, stored_password):
+                from ..utils.JWT import create_access_token
+                user_dict = {
+                    "sub": str(user_id),
+                    "email": email,
+                    "name": name,
+                }
+                token = create_access_token(user_dict)
+                return {"status": "success", "token": token}
+            else:
+                return {"status": "wrong_password"}
+        except Exception as e:
+            print(f"Erro ao verificar senha: {e}")
+            return {"status": "error", "message": "password_verify_error"}
 
     except Exception as e:
         print(f"Erro na query de login: {e}")
-        return None
+        return {"status": "error", "message": "query_error"}
     finally:
         try:
             cur.close()

@@ -13,3 +13,5 @@ openai-guardrails
 openai-agents
 pillow
 matplotlib
+numpy
+seaborn

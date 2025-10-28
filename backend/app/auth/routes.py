@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 import re
 from ..database.querys.auth_query import login_query, register_query
@@ -16,6 +17,25 @@ class Register(BaseModel):
     password: str
 
 
+class ErrorDetail(BaseModel):
+    field: str
+    message: str
+
+
+class ValidationErrorResponse(BaseModel):
+    errors: list[ErrorDetail]
+
+
+class LoginSuccess(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class RegisterSuccess(BaseModel):
+    id: str
+    email: EmailStr
+
+
 def validate_password(password: str) -> bool:
     # regra mínima: pelo menos 8 caracteres, pelo menos uma letra e um número
     if len(password) < 8:
@@ -27,35 +47,56 @@ def validate_password(password: str) -> bool:
     return True
 
 
-@router.post("/login")
+@router.post("/login", response_model=LoginSuccess, responses={400: {"model": ValidationErrorResponse}, 401: {"model": ValidationErrorResponse}, 500: {"model": ValidationErrorResponse}})
 def login(request: Login):
     try:
-        access_token = login_query(request)
+        result = login_query(request)
 
-        if access_token:
-            return {"access_token": access_token, "token_type": "bearer"}
-        else:
-            raise HTTPException(
-                status_code=401,
-                detail="Email ou senha incorretos",
-                headers={"WWW-Authenticate": "Bearer"},
+        if not result:
+            # Caso improvável: query retornou None por erro não tipificado
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errors": [{"field": "non_field", "message": "Erro interno no login"}]},
             )
+
+        status_res = result.get("status")
+
+        if status_res == "success":
+            return {"access_token": result.get("token"), "token_type": "bearer"}
+        elif status_res == "no_user":
+            # Email não encontrado -> validação no campo email
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errors": [{"field": "email", "message": "Email não cadastrado"}]},
+            )
+        elif status_res == "wrong_password":
+            # Senha incorreta -> credencial inválida
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"errors": [{"field": "password", "message": "Senha incorreta"}]},
+            )
+        else:
+            # erros internos com mensagens específicas
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errors": [{"field": "non_field", "message": result.get("message", "Erro interno")}]},
+            )
+
     except Exception as e:
         print(f"Erro no login: {e}")
-        raise HTTPException(
-            status_code=401,
-            detail="Email ou senha incorretos",
-            headers={"WWW-Authenticate": "Bearer"},
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errors": [{"field": "non_field", "message": "Erro interno no login"}]},
         )
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegisterSuccess, status_code=status.HTTP_201_CREATED, responses={400: {"model": ValidationErrorResponse}})
 def register(request: Register):
     # EmailStr já valida o formato do email
     if not validate_password(request.password):
-        raise HTTPException(
-            status_code=400,
-            detail="Senha inválida: deve ter ao menos 8 caracteres, conter letras e números.",
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"errors": [{"field": "password", "message": "Senha inválida: deve ter ao menos 8 caracteres, conter letras e números."}]},
         )
 
     try:
@@ -64,7 +105,14 @@ def register(request: Register):
             return {"id": user_id, "email": request.email}
         else:
             # Se a query retornou None, o mais provável é email duplicado ou erro no DB
-            raise HTTPException(status_code=400, detail="O email já está em uso ou ocorreu um erro no registro.")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errors": [{"field": "email", "message": "O email já está em uso ou ocorreu um erro no registro."}]},
+            )
     except Exception as e:
         print(f"Erro no registro: {e}")
-        raise HTTPException(status_code=400, detail="O email já está em uso ou ocorreu um erro no registro.")
+        # Retornamos uma resposta estruturada para o frontend
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"errors": [{"field": "email", "message": "O email já está em uso ou ocorreu um erro no registro."}]},
+        )

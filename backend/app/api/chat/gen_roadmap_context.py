@@ -137,105 +137,130 @@ class CriandoTaksDoRoadmapContext:
 
 def criando_taks_do_roadmap_instructions(run_context: RunContextWrapper[CriandoTaksDoRoadmapContext], _agent: Agent[CriandoTaksDoRoadmapContext]):
   input_output_text = run_context.context.input_output_text
-  return f"""You will receive a JSON array of roadmap steps that have already been created in the database. Each step has an "id" field (UUID) that you MUST use as "step_id" for all tasks belonging to that step.
+  return f"""You will receive a JSON array of roadmap steps that have already been created in the database. Each step has an "id" field containing a UUID string (like "edb072f3-01df-4d54-ac94-f6705a23e76a") that you MUST copy EXACTLY as the "step_id" for all tasks.
+
+CRITICAL REQUIREMENTS:
+1. The step_id must be the EXACT UUID from the input's "id" field. DO NOT simplify it or create your own IDs like "1a", "001", etc. Copy the full UUID string exactly as provided.
+2. You MUST generate tasks for ALL steps in the input array. DO NOT stop after the first step. Process EVERY single step provided.
+3. Each step should have multiple tasks (at least 2-4 tasks per step, depending on complexity).
 
 For every generated task, thoroughly analyze dependencies and logical work units within its respective step. Identify all implicit and explicit sub-tasks, ensuring no sub-action or requirement is omitted. When possible, break down steps into multiple granular, actionable tasks rather than a single task per step, unless truly atomic. Maintain clarity and completeness.
 
 For each generated task, provide only these fields:
-- description: A clear, detailed explanation of the task’s purpose and requirements.
-- passos_name: The name/title of the roadmap step to which this task belongs (string; directly derived from the original step).
+- description: A clear, detailed explanation of the task's purpose and requirements.
 - task_order: The sequential integer for the task within its step (always resetting to 1 for each new roadmap step).
-- step_id: The original step_id corresponding to this task’s roadmap step, copied verbatim from the input step.
+- step_id: The EXACT UUID string from the input step's "id" field (must be a valid UUID format like "edb072f3-01df-4d54-ac94-f6705a23e76a").
 - suggested_tools: An array of relevant tools or technologies for the task (always as an array, even with a single tool).
 
 # Steps
 
-1. Receive a JSON array of project roadmap steps; each input step MUST include at least: a name (passos_name or similar), an intended outcome/description, and step_id (string or number).
-2. For each step:
+1. Receive a JSON array of project roadmap steps; each input step will include: id (UUID string), title, description, and step_order.
+2. For EACH AND EVERY step in the input array (do not skip any):
     - Thoroughly review its requirements, expected deliverables, implicit and explicit processes.
     - Break it into as many distinct, well-defined, and ordered tasks as necessary (analysis, design, implementation, review, etc.).
     - Start task_order at 1 for the first task of each step, incrementing by 1 for each subsequent task in the same step.
-    - Assign each task the respective passos_name and step_id from the step (both exactly as provided).
+    - Assign each task the EXACT step_id (UUID) from the input step's "id" field.
 3. For each task, provide:
     - description (detailed and clear)
-    - passos_name (copied verbatim from the step)
     - task_order (ordered, starting at 1 within each step)
-    - step_id (taken verbatim from the step)
+    - step_id (EXACT UUID copied from the input step's "id" field)
     - suggested_tools (array of appropriate tools/technologies)
 4. Before producing output, internally confirm that:
+    - You have processed ALL steps from the input array (count them to verify).
     - All step content is captured as individual or multiple tasks as needed.
     - No logical work unit is omitted or merged unnecessarily.
-    - task_order restarts at 1 for each new step, and passos_name and step_id are present for each task.
+    - task_order restarts at 1 for each new step, and step_id is the exact UUID from input.
 
 # Output Format
 
 Respond exclusively with a JSON array of task objects (in order; can be grouped or not, but always flatten the output), each including:
 - "description": string
-- "passos_name": string
 - "task_order": integer (starting at 1 for each step)
-- "step_id": (string or number, as passed in input)
+- "step_id": UUID string (EXACT copy from input's "id" field)
 - "suggested_tools": array of strings
 
 Do NOT wrap your output in code blocks, markdown, or add any supplementary explanations—only the JSON array, one object per task.
 
 # Example Output
 
+Example: If you receive 6 steps in the input, you MUST generate tasks for all 6 steps. Here's a sample showing tasks for 3 steps (but you must do ALL steps):
+
 [
   {{
     "description": "Identificar e documentar todos os requisitos do projeto com as partes interessadas.",
-    "passos_name": "Levantamento de Requisitos",
     "task_order": 1,
-    "step_id": "001",
+    "step_id": "edb072f3-01df-4d54-ac94-f6705a23e76a",
     "suggested_tools": ["Google Docs", "Miro"]
   }},
   {{
     "description": "Realizar entrevistas e questionários para capturar requisitos adicionais das partes interessadas.",
-    "passos_name": "Levantamento de Requisitos",
     "task_order": 2,
-    "step_id": "001",
+    "step_id": "edb072f3-01df-4d54-ac94-f6705a23e76a",
     "suggested_tools": ["Google Forms"]
   }},
   {{
+    "description": "Validar e priorizar os requisitos coletados com a equipe.",
+    "task_order": 3,
+    "step_id": "edb072f3-01df-4d54-ac94-f6705a23e76a",
+    "suggested_tools": ["Trello", "Jira"]
+  }},
+  {{
     "description": "Realizar uma análise de viabilidade técnica baseada nos requisitos documentados.",
-    "passos_name": "Análise de Viabilidade",
     "task_order": 1,
-    "step_id": "002",
+    "step_id": "106eb4fe-c374-4699-b119-bbf6ce64c6bc",
     "suggested_tools": ["Google Sheets"]
   }},
   {{
     "description": "Avaliar riscos técnicos e operacionais identificados durante a análise de viabilidade.",
-    "passos_name": "Análise de Viabilidade",
     "task_order": 2,
-    "step_id": "002",
+    "step_id": "106eb4fe-c374-4699-b119-bbf6ce64c6bc",
     "suggested_tools": ["Trello", "Excel"]
   }},
   {{
+    "description": "Documentar as conclusões da análise de viabilidade e apresentar para stakeholders.",
+    "task_order": 3,
+    "step_id": "106eb4fe-c374-4699-b119-bbf6ce64c6bc",
+    "suggested_tools": ["PowerPoint", "Google Slides"]
+  }},
+  {{
     "description": "Prototipar as principais funcionalidades para validação inicial com stakeholders.",
-    "passos_name": "Prototipagem",
     "task_order": 1,
-    "step_id": "003",
+    "step_id": "f39b0048-eabd-4507-b5e9-fd1a2e82cbc3",
     "suggested_tools": ["Figma", "Adobe XD"]
   }},
   {{
     "description": "Coletar feedback dos stakeholders sobre o protótipo e documentar ajustes necessários.",
-    "passos_name": "Prototipagem",
     "task_order": 2,
-    "step_id": "003",
+    "step_id": "f39b0048-eabd-4507-b5e9-fd1a2e82cbc3",
     "suggested_tools": ["Google Forms", "Miro"]
+  }},
+  {{
+    "description": "Refinar o protótipo com base no feedback recebido.",
+    "task_order": 3,
+    "step_id": "f39b0048-eabd-4507-b5e9-fd1a2e82cbc3",
+    "suggested_tools": ["Figma"]
   }}
+  ... (continue for ALL remaining steps in the input)
 ]
-(Observe que task_order reinicia a partir de 1 para cada passo, cada task possui o passos_name e step_id correspondentes. Nos exemplos reais haverá tantos passos e tasks quanto apropriado aos dados de entrada.)
+(IMPORTANTE: Este exemplo mostra apenas 3 steps. Você DEVE processar TODOS os steps do input e gerar tasks para cada um deles. Se receber 6 steps, gere tasks para os 6. Se receber 10 steps, gere tasks para os 10.)
 
 # Notes
 
-- Each task’s task_order starts at 1 within its respective step and increments only within that step.
-- Always populate the passos_name and step_id fields for every task, copying exactly as provided from the step.
+- YOU MUST PROCESS ALL STEPS IN THE INPUT ARRAY. Count them and verify you've created tasks for each one.
+- Each task's task_order starts at 1 within its respective step and increments only within that step.
+- ALWAYS use the exact UUID from the input's "id" field as step_id. Never create simplified identifiers.
+- Always populate the step_id field for every task, copying the exact UUID string.
 - Tasks must be granular, complete, and directly reflect every implicit or explicit sub-action within the step.
+- Generate at least 2-4 tasks per step (more if the step is complex).
 - Always use suggested_tools as an array (one or more items).
 - Never wrap your output in code blocks or add explanations.
 - Outputs must be maximally granular to ensure every necessary sub-action is a separate task.
+- DO NOT STOP after generating tasks for the first step. Continue until ALL steps have tasks.
 
-Remember: Your goal is to decompose each roadmap step (having a step_id) into as many actionable, clearly described tasks as necessary, always producing a JSON array where each task includes description, passos_name, step_id (copied), task_order (resetting per step), and suggested_tools—without any superfluous formatting or explanations. {input_output_text}"""
+Remember: Your goal is to decompose EVERY SINGLE roadmap step (having a UUID in the "id" field) into as many actionable, clearly described tasks as necessary, always producing a JSON array where each task includes description, step_id (exact UUID copied), task_order (resetting per step), and suggested_tools—without any superfluous formatting or explanations. 
+
+INPUT STEPS WITH IDs:
+{input_output_text}"""
 criando_taks_do_roadmap = Agent(
   name="Criando Taks do Roadmap",
   instructions=criando_taks_do_roadmap_instructions,
@@ -244,7 +269,7 @@ criando_taks_do_roadmap = Agent(
   model_settings=ModelSettings(
     store=True,
     reasoning=Reasoning(
-      effort="low"
+      effort="medium"
     )
   )
 )
@@ -255,16 +280,28 @@ class CriandoPassosDoRoadmapContext:
     self.input_output_text = input_output_text
 def criando_passos_do_roadmap_instructions(run_context: RunContextWrapper[CriandoPassosDoRoadmapContext], _agent: Agent[CriandoPassosDoRoadmapContext]):
   input_output_text = run_context.context.input_output_text
-  return f"""Crie um agente responsável por gerar as etapas (passos) ou categorias de um roadmap personalizado, retornando a resposta em formato JSON. Para cada etapa do roadmap, forneça:
+  return f"""Crie um roadmap completo e detalhado com PELO MENOS 5-6 etapas (passos) bem definidas. Quanto mais completo e detalhado o roadmap, melhor. Para cada etapa do roadmap, forneça:
 - title: um título curto e claro para a etapa/categoria.
 - description: uma descrição sucinta explicando o propósito e os objetivos dessa etapa/categoria no contexto do roadmap.
 - step_order: a posição sequencial lógica dessa etapa/categoria no roadmap (começando em 1).
 
-Antes de listar as etapas, reflita sobre quais fases principais compõem um roadmap típico para o contexto fornecido. Considere a ordem ideal para aprendizado ou execução. Não pule etapas e não coloque conclusões, resumos ou classificações: apenas os dados estruturados de cada etapa, mantendo a ordem lógica.
+IMPORTANTE: Você DEVE criar um roadmap completo com no MÍNIMO 5-6 etapas. Não crie apenas 1 ou 2 etapas. Pense em todas as fases necessárias desde o início até a conclusão do projeto.
+
+Antes de listar as etapas, reflita sobre quais fases principais compõem um roadmap típico para o contexto fornecido:
+- Planejamento inicial e definição de objetivos
+- Pesquisa e análise
+- Design e prototipação
+- Desenvolvimento/Implementação
+- Testes e validação
+- Lançamento e monitoramento
+- (outras etapas conforme necessário para o contexto específico)
+
+Considere a ordem ideal para aprendizado ou execução. Não pule etapas e não coloque conclusões, resumos ou classificações: apenas os dados estruturados de cada etapa, mantendo a ordem lógica.
 
 Ao estruturar a resposta:
-- Pense primeiro nos passos essenciais do roadmap e justifique internamente a escolha e ordem de cada um (chain-of-thought antes do output, mas NÃO inclua este raciocínio na resposta final).
-- Só então produza o JSON solicitado.
+- Pense primeiro em TODAS as fases essenciais do roadmap (mínimo 5-6, idealmente 6-8).
+- Justifique internamente a escolha e ordem de cada uma (chain-of-thought antes do output, mas NÃO inclua este raciocínio na resposta final).
+- Só então produza o JSON solicitado com TODAS as etapas.
 - Garanta que todas as etapas estejam bem descritas e nomeadas de maneira clara para um usuário leigo.
 
 Formato de saída: 
@@ -280,12 +317,32 @@ Devolva um único array em JSON no seguinte formato (sem texto extra):
     "title": "Nome da Etapa 2",
     "description": "Descrição da segunda etapa.",
     "step_order": 2
+  }},
+  {{
+    "title": "Nome da Etapa 3",
+    "description": "Descrição da terceira etapa.",
+    "step_order": 3
+  }},
+  {{
+    "title": "Nome da Etapa 4",
+    "description": "Descrição da quarta etapa.",
+    "step_order": 4
+  }},
+  {{
+    "title": "Nome da Etapa 5",
+    "description": "Descrição da quinta etapa.",
+    "step_order": 5
+  }},
+  {{
+    "title": "Nome da Etapa 6",
+    "description": "Descrição da sexta etapa.",
+    "step_order": 6
   }}
 ]
 
-Importante: A resposta deve conter somente o JSON, diretamente, sem introdução, resumo ou comentários. Certifique-se de que cada etapa é única e sua ordem faz sentido pedagógico e prático.
+Importante: A resposta deve conter somente o JSON, diretamente, sem introdução, resumo ou comentários. Certifique-se de que cada etapa é única e sua ordem faz sentido pedagógico e prático. CRIE NO MÍNIMO 5-6 ETAPAS COMPLETAS.
 
-Lembrete: Crie as etapas apropriadas para o roadmap solicitado, sempre seguindo a ordem lógica e detalhando cada fase brevemente. {input_output_text}"""
+Lembrete: Crie TODAS as etapas apropriadas para um roadmap completo (mínimo 5-6 etapas), sempre seguindo a ordem lógica e detalhando cada fase brevemente. Não seja minimalista - pense em todas as fases necessárias do início ao fim. {input_output_text}"""
 criando_passos_do_roadmap = Agent(
   name="Criando Passos do RoadMap",
   instructions=criando_passos_do_roadmap_instructions,
@@ -294,7 +351,7 @@ criando_passos_do_roadmap = Agent(
   model_settings=ModelSettings(
     store=True,
     reasoning=Reasoning(
-      effort="low"
+      effort="medium"
     )
   )
 )
@@ -461,4 +518,3 @@ async def run_workflow(workflow_input: WorkflowInput, roadmap_id: str):
             traceback.print_exc()
     else:
         print("Nenhum step foi criado, pulando criação de tasks")
-

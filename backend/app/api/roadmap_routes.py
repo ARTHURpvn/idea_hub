@@ -45,7 +45,11 @@ async def create(idea_id: str, exported_to: str):
 
                 # Salvar imagem
                 output_path = os.path.join(output_dir, f'roadmap_{roadmap_id}.png')
-                generator.save_roadmap_image(roadmap_data, output_path)
+                image_bytes = generator.generate_roadmap_image(roadmap_data)
+
+                # Salvar os bytes da imagem em arquivo
+                with open(output_path, 'wb') as f:
+                    f.write(image_bytes)
 
                 print(f"Imagem do roadmap gerada: {output_path}")
 
@@ -100,7 +104,12 @@ async def get_roadmap_image(roadmap_id: str):
 
             generator = RoadmapVisualGenerator()
             os.makedirs(output_dir, exist_ok=True)
-            generator.save_roadmap_image(roadmap_data, image_path)
+
+            image_bytes = generator.generate_roadmap_image(roadmap_data)
+
+            # Salvar os bytes da imagem em arquivo
+            with open(image_path, 'wb') as f:
+                f.write(image_bytes)
 
         return FileResponse(
             image_path,
