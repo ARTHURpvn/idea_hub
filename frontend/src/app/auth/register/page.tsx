@@ -24,13 +24,17 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useState } from "react"
 import { EyeClosedIcon, EyeIcon } from "lucide-react"
 import Link from "next/link"
-import { useAuthStore } from "@/zustand_store/auth_store"
+import { useAuthStore } from "@/store/auth_store"
 
 const formSchema = z.object({
     email: z.email({
         message: "Insira um gmail Valido.",
     }).min(12, {
-        message: "Username must be at least 12 characters.",
+        message: "Email deve ter no minimo 12 caracteres.",
+    }),
+
+    name: z.string().min(10, {
+        message: "Nome deve ter no minimo 10 caracteres",
     }),
 
     password: z.string().min(8, {
@@ -48,12 +52,22 @@ const formSchema = z.object({
         .refine((val) => /[!@#$%^&*(),.?":{}|<>/]/.test(val), {
             message: "Deve conter ao menos um caractere especial",
         }),
+    confirmPassword: z.string().min(1, {
+        message: "Confirme sua senha",
+    })
+}).superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Senhas não coincidem',
+            path: ['confirmPassword'],
+        })
+    }
 })
 
-
-const LoginPage = () => {
+const RegisterPage = () => {
     const [pass, setPass] = useState<"text" | "password">("password")
-
+    const [conf, setConf] = useState<"text" | "password">("password")
     const togglePass = () => {
         if (pass === "password") {
             setPass("text")
@@ -61,33 +75,55 @@ const LoginPage = () => {
             setPass("password")
         }
     }
+    const toggleConf = () => {
+        if (conf === "password") {
+            setConf("text")
+        } else {
+            setConf("password")
+        }
+    }
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            name: "",
             email: "",
             password: ""
         },
     })
-
-    const {login} = useAuthStore.getState()
+    const {register} = useAuthStore.getState()
     async function onSubmit(values: z.infer<typeof formSchema>) {
-        const res = await login(values.email, values.password)
-        if(res) form.reset()
+        const res = await register(values.name, values.email, values.password)
+        if(!res) form.reset()
     }
     return (
         <div className="flex items-center justify-center h-screen">
-
             <Card className="w-full max-w-sm">
                 <CardHeader>
-                    <CardTitle>Logar na Plataforma</CardTitle>
+                    <CardTitle>Registar-se na Plataforma</CardTitle>
                     <CardDescription>
-                        Insira suas credenciais para acessar sua conta.
+                        Insira suas credenciais para criar uma conta.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Nome Completo</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Insira seu Nome Completo" type={"text"} maxLength={40} {...field} />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Insira o seu nome completo.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField
                                 control={form.control}
                                 name="email"
@@ -98,7 +134,7 @@ const LoginPage = () => {
                                             <Input placeholder="Insira seu email" type={"email"} maxLength={40} {...field} />
                                         </FormControl>
                                         <FormDescription>
-                                            Insira o email que foi cadastrado.
+                                            Insira um email para ser cadastrado.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
@@ -119,7 +155,28 @@ const LoginPage = () => {
                                             </div>
                                         </FormControl>
                                         <FormDescription>
-                                            Insira a senha que foi cadastrada.
+                                            Insira a sua senha.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="confirmPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Senha</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input placeholder="Confirme sua Senha" type={conf} required maxLength={24} {...field} />
+                                                <button onClick={toggleConf} className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                                    {conf === "password" ? <EyeClosedIcon /> : <EyeIcon />}
+                                                </button>
+                                            </div>
+                                        </FormControl>
+                                        <FormDescription>
+                                            Confirme a sua senha.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
@@ -130,9 +187,12 @@ const LoginPage = () => {
                     </Form>
                 </CardContent>
                 <CardFooter className="flex-col gap-2">
+                    <p>
+                        Ja tem uma conta?
+                    </p>
                     <Button variant="outline" className="w-full" asChild>
-                        <Link href={"/register"}>
-                            Registrar-se
+                        <Link href={"/auth/login"}>
+                            Logar
                         </Link>
                     </Button>
                 </CardFooter>
@@ -141,4 +201,4 @@ const LoginPage = () => {
     )
 }
 
-export default LoginPage
+export default RegisterPage
