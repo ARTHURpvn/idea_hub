@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthAwareLayout from "../components/AuthAwareLayout";
+import { useIdeaStore } from "@/store/idea_store";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,6 +24,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+    const mapResponse = useIdeaStore.getState().mapResponse
+    mapResponse()
   return (
     <html lang="en">
       <body

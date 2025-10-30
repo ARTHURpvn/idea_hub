@@ -1,75 +1,278 @@
-"use client"
+"use client";
 
 import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    XAxis,
+    YAxis,
+    ResponsiveContainer,
+    Tooltip,
+    LabelList,
+} from "recharts";
+import {
+    Lightbulb,
+    Rocket,
+    Brain,
+    Clock,
+    SquareKanban,
+} from "lucide-react";
 import { useAuthStore } from "@/store/auth_store";
-import {BookmarkCheckIcon, LightbulbIcon, PenLineIcon, SquareKanbanIcon } from "lucide-react";
+import { useIdeaStore } from "@/store/idea_store";
+import { useEffect } from "react";
+import { Status } from "@/requests/idea";
 
-export default function DashboardPage() {
-    const ideias = [
-        { nome: "App de IA Criativa", status: "em andamento", data: "2025-10-20" },
-        { nome: "Plataforma de Freelancers", status: "concluída", data: "2025-09-10" },
+const fallbackData = [
+    { name: "Jun", ideias: 2 },
+    { name: "Jul", ideias: 4 },
+    { name: "Ago", ideias: 3 },
+    { name: "Set", ideias: 5 },
+    { name: "Out", ideias: 4 },
+];
+
+export default function Dashboard() {
+    // use store selectors so component re-renders on updates
+    const name = useAuthStore((state) => state.name) ?? "User Name";
+    const mapResponse = useIdeaStore((state) => state.mapResponse);
+    const created = useIdeaStore((state) => state.ideaCreated) || 0;
+    const progress = useIdeaStore((state) => state.ideaProgress) || 0;
+    const finished = useIdeaStore((state) => state.ideaFinished) || 0;
+    const months = useIdeaStore((state) => state.months) || [];
+    const monthlyCounts = useIdeaStore((state) => state.monthlyCounts) || [];
+    const ideaCreatedThisMonth = useIdeaStore((state) => state.ideaCreatedThisMonth) || 0;
+    const recentIdeas = useIdeaStore((state) => state.recentIdeas) || [];
+
+    useEffect(() => {
+        mapResponse().catch((err) => console.error("Failed to map responses:", err));
+    }, [mapResponse]);
+
+    // prepare chart data aligning months -> monthlyCounts
+    const chartData = months.length && monthlyCounts.length
+        ? months.map((m, idx) => ({ name: m, ideias: monthlyCounts[idx] ?? 0 }))
+        : fallbackData;
+
+    // format recent ideas for display (fallback to a small mock when empty)
+    const displayRecent = recentIdeas.length ? recentIdeas : [
+        { title: "App de IA Criativa", status: Status.ACTIVE, ai_classification: "", created_at: '2025-10-20' },
+        { title: "Plataforma de Mentoria", status: Status.FINISHED, ai_classification: "", created_at: '2025-10-10' },
+        { title: "Hub de Freelancers", status: Status.DRAFT, ai_classification: "", created_at: '2025-10-02' },
     ];
-    const cards = [
-        { title: "Ideias Criadas", value: 7, Icon: <LightbulbIcon /> },
-        { title: "Em Andamento", value: 3, Icon: <PenLineIcon /> },
-        { title: "Concluídas", value: 2, Icon: <BookmarkCheckIcon /> },
-        { title: "Roadmaps", value: 4, Icon: <SquareKanbanIcon /> },
-    ]
 
-    const name = useAuthStore.getState().name || "User Name";
+    const fmtDate = (d?: string) => {
+        if (!d) return "-";
+        try {
+            const dt = new Date(d);
+            return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch { return d }
+    }
+
     return (
-        <div className="box-border max-w-full py-12 px-6 md:px-12 overflow-x-hidden">
-            <title> IdeaHub | Dashboard </title>
-            <div className="max-w-7xl mx-auto w-full min-w-0">
-                {/* Cabeçalho */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold">Boa Tarde, <span className={"text-primary"}>{name}!</span></h1>
-                        <p className="text-muted-foreground">Pronto para criar melhorar suas Ideias?</p>
+        <div className="p-8 space-y-10 max-w-7xl mx-auto">
+            {/* Cabeçalho */}
+            <header className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight">
+                    Bem-vindo de volta, <span className="text-primary">{name}</span> 👋
+                </h1>
+                <p className="text-muted-foreground">
+                    Aqui está um resumo das suas ideias e atividades recentes.
+                </p>
+            </header>
+
+            {/* Cards principais */}
+            <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <MetricCard
+                    title="Ideias criadas"
+                    value={String(created)}
+                    subtitle={`+${String(ideaCreatedThisMonth)} este mês`}
+                    icon={<Lightbulb size={22} />}
+                />
+                <MetricCard
+                    title="Em progresso"
+                    value={String(progress)}
+                    subtitle="2 com IA"
+                    icon={<Rocket size={22} />}
+                />
+                <MetricCard
+                    title="Finalizadas"
+                    value={String(finished)}
+                    subtitle="Prontas para execução"
+                    icon={<Brain size={22} />}
+                />
+                <MetricCard
+                    title="Roadmap"
+                    value="6"
+                    subtitle="Roadmap Criado pelo Sistema"
+                    icon={<SquareKanban size={22} />}
+                />
+            </section>
+
+            {/* Gráfico */}
+            <Card className="border border-border shadow-sm">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Progresso de Ideias (Últimos meses)</CardTitle>
+                    <CardDescription>
+                        Número de ideias criadas mensalmente.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                    <div className="h-[220px] md:h-[260px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} margin={{ top: 18, right: 12, left: 0, bottom: 6 }}>
+                                <defs>
+                                    <linearGradient id="colorIdeias" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.3} />
+                                    </linearGradient>
+                                    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feDropShadow dx="0" dy="6" stdDeviation="8" floodOpacity="0.08" />
+                                    </filter>
+                                </defs>
+
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
+                                <XAxis
+                                    dataKey="name"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={8}
+                                    className="text-xs text-muted-foreground"
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    className="text-xs text-muted-foreground"
+                                    allowDecimals={false}
+                                />
+
+                                {/* Tooltip customizado com estilo mais suave */}
+                                <Tooltip
+                                    content={<CustomTooltip />}
+                                    cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+                                    wrapperStyle={{ outline: 'none', fontSize: 13 }}
+                                />
+
+                                <Bar
+                                    dataKey="ideias"
+                                    fill="url(#colorIdeias)"
+                                    radius={[10, 10, 6, 6]}
+                                    barSize={32}
+                                    animationDuration={900}
+                                    isAnimationActive={true}
+                                >
+                                    <LabelList dataKey="ideias" position="top" className="text-xs text-foreground" />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
-                    <Button>
-                        + Nova Ideia
-                    </Button>
-                </div>
+                </CardContent>
+            </Card>
 
-                {/* Métricas */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {cards.map((item, index) => (
-                        <div key={index} className="flex flex-row items-center gap-8 bg-card py-5 px-8 rounded-2xl shadow text-center min-w-0">
-                            <div className={"size-10 bg-primary/20 text-primary rounded-md flex items-center justify-center"}>
-                                {item.Icon}
-                            </div>
-                            <div className={"flex flex-col justify-center gap-1"}>
-                                <h2 className="text-3xl font-semibold text-left">{item.value}</h2>
-                                <p className="text-sm text-muted-foreground">{item.title}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
+            {/* Seções secundárias */}
+            <section className="grid gap-8 lg:grid-cols-2">
                 {/* Ideias Recentes */}
-                <div className={"mt-12"}>
-                    <h2 className="text-lg font-bold mb-3 flex gap-2 items-center"><LightbulbIcon  className={"text-secondary"}/> Ideias Recentes</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {ideias.map((idea) => (
-                            <div key={idea.nome} className="bg-muted p-4 rounded-2xl min-w-0">
-                                <h3 className="font-semibold">{idea.nome}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {idea.status} • {idea.data}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <Card className="border border-border shadow-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Clock className="text-primary" size={18} />
+                            Ideias Recentes
+                        </CardTitle>
+                        <CardDescription>
+                            Últimas ideias criadas ou modificadas.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {displayRecent.map((idea, index) => (
+                                <div
+                                    key={index}
+                                    className="flex justify-between items-center rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors p-3"
+                                >
+                                    <div>
+                                        <h3 className="font-semibold text-foreground">
+                                            {idea.title}
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            {String(idea.status)} • {fmtDate(idea.created_at)}
+                                        </p>
+                                    </div>
+                                    <Button size="sm" variant="outline">
+                                        Abrir
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
 
-                {/* Sugestões da IA */}
-                <div>
-                    <h2 className="text-lg font-bold mb-3">💬 Sugestões da IA</h2>
-                    <p className="italic text-muted-foreground">
-                        “Suas ideias têm foco em tecnologia. Que tal explorar IA aplicada à educação?”
-                    </p>
-                </div>
-            </div>
+                {/* Interações IA */}
+                <Card className="border border-border shadow-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Sugestões da IA</CardTitle>
+                        <CardDescription>
+                            Insights personalizados com base nas suas ideias.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                        <Interaction text="💡 'Sua ideia sobre educação tem potencial para IA generativa.'" />
+                        <Interaction text="🤖 'Tente explorar parcerias com startups de tecnologia.'" />
+                        <Interaction text="🚀 'A IA sugere adicionar um módulo de aprendizado adaptativo.'" />
+                    </CardContent>
+                </Card>
+            </section>
+        </div>
+    );
+}
+
+/* === Components === */
+interface MetricCardProps {
+    title: string;
+    value: string;
+    subtitle: string;
+    icon: React.ReactNode;
+}
+
+function MetricCard({ title, value, subtitle, icon }: MetricCardProps) {
+    return (
+        <Card className="bg-card border border-border shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {title}
+                </CardTitle>
+                <div className="text-primary">{icon}</div>
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-foreground">{value}</div>
+                <p className="text-sm text-muted-foreground">{subtitle}</p>
+            </CardContent>
+        </Card>
+    );
+}
+
+function Interaction({ text }: { text: string }) {
+    return (
+        <div className="p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition">
+            {text}
+        </div>
+    );
+}
+
+
+/* === Custom Tooltip === */
+function CustomTooltip({ active, payload, label }: any) {
+    if (!active || !payload || !payload.length) return null;
+    const point = payload[0].payload;
+
+    return (
+        <div className="bg-card border border-border shadow-md p-3 rounded-md text-sm">
+            <div className="font-medium text-foreground">{label}</div>
+            <div className="text-xs text-muted-foreground">{point.ideias} ideias</div>
         </div>
     );
 }
