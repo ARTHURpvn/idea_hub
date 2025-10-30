@@ -5,11 +5,37 @@ from fastapi.responses import FileResponse
 from .chat.gen_roadmap_context import run_workflow, WorkflowInput
 from ..database.querys.ideas_query import get_idea_by_id
 from ..database.querys.roadmap_query import create_roadmap, Roadmap, get_roadmap_with_details
+from ..database.querys.roadmap_query import get_all_roadmaps
 from .roadmap.roadmap_generator import RoadmapVisualGenerator
+from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter()
 
-@router.post("/create", status_code=200, tags=["Roadmap"])
+class RoadmapTaskResponse(BaseModel):
+    id: str
+    task_order: int
+    description: str
+    suggested_tools: list[str]
+
+
+class RoadmapStepResponse(BaseModel):
+    id: str
+    step_order: int
+    title: str
+    description: str
+    tasks: list[RoadmapTaskResponse] = []
+
+
+class RoadmapResponse(BaseModel):
+    id: str
+    idea_id: str
+    exported_to: str
+    generated_at: Optional[str] = None
+    steps: list[RoadmapStepResponse] = []
+
+
+@router.post("/{idea_id}", status_code=200, tags=["Roadmap"])
 async def create(idea_id: str, exported_to: str):
     roadmap=Roadmap(idea_id=idea_id, exported_to=exported_to)
 
@@ -142,3 +168,18 @@ async def get_roadmap(roadmap_id: str):
         print(f"Erro ao buscar roadmap: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao buscar roadmap: {str(e)}")
 
+
+@router.get("/", status_code=200, response_model=list[RoadmapResponse], tags=["Roadmap"], summary="Listar roadmaps", description="Retorna todos os roadmaps gerados ordenados por data de geração.")
+async def list_roadmaps():
+    """
+    Lista todos os roadmaps armazenados com seus steps e tasks.
+    """
+    try:
+        roadmaps = get_all_roadmaps()
+        # garantir lista
+        if not roadmaps:
+            return []
+        return roadmaps
+    except Exception as e:
+        print(f"Erro ao listar roadmaps: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao listar roadmaps: {str(e)}")

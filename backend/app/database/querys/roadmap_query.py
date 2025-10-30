@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -265,6 +265,106 @@ def get_roadmap_with_details(roadmap_id: str) -> Optional[Dict]:
             conn.close()
         except:
             pass
+
+def get_all_roadmaps() -> Optional[list[Any]]:
+    try:
+        conn, cur = get_db_conn(db_name)
+    except Exception as e:
+        print(f"Erro ao conectar ao banco: {e}")
+        return []
+
+    try:
+        cur.execute("""
+            SELECT id, idea_id, exported_to, generated_at
+            FROM roadmaps
+            ORDER BY generated_at DESC
+        """)
+        roadmap_rows = cur.fetchall()
+        roadmaps: list[Dict[str, Any]] = []
+
+        if not roadmap_rows:
+            return []
+
+        for row in roadmap_rows:
+            generated_at = row[3]
+            generated_at_str = generated_at.isoformat() if getattr(generated_at, 'isoformat', None) else None
+
+            roadmap = {
+                'id': str(row[0]),
+                'idea_id': str(row[1]),
+                'exported_to': row[2],
+                'generated_at': generated_at_str,
+                'steps': []
+            }
+
+            # Buscar steps
+            cur.execute(
+                """
+                SELECT id, step_order, title, description
+                FROM roadmap_steps
+                WHERE roadmap_id = %s
+                ORDER BY step_order
+                """,
+                (row[0],)
+            )
+
+            steps_rows = cur.fetchall()
+
+            for step_row in steps_rows:
+                step_id = str(step_row[0])
+                step = {
+                    'id': step_id,
+                    'step_order': step_row[1],
+                    'title': step_row[2],
+                    'description': step_row[3],
+                    'tasks': []
+                }
+
+                # Buscar tasks deste step
+                cur.execute(
+                    """
+                    SELECT id, task_order, description, suggested_tools
+                    FROM roadmap_tasks
+                    WHERE step_id = %s
+                    ORDER BY task_order
+                    """,
+                    (step_id,)
+                )
+
+                tasks_rows = cur.fetchall()
+
+                for task_row in tasks_rows:
+                    # Parse suggested_tools (JSON string para lista)
+                    suggested_tools = []
+                    if task_row[3]:
+                        try:
+                            suggested_tools = json.loads(task_row[3])
+                        except Exception:
+                            suggested_tools = []
+
+                    task = {
+                        'id': str(task_row[0]),
+                        'task_order': task_row[1],
+                        'description': task_row[2],
+                        'suggested_tools': suggested_tools
+                    }
+                    step['tasks'].append(task)
+
+                roadmap['steps'].append(step)
+
+            roadmaps.append(roadmap)
+
+        return roadmaps
+    except Exception as e:
+        print(f"Erro ao buscar roadmaps: {e}")
+        return []
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
 
 def update_roadmap_image_path(roadmap_id: str, image_path: str) -> bool:
     """

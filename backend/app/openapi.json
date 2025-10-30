@@ -540,14 +540,14 @@
         }
       }
     },
-    "/api/roadmap/create": {
+    "/api/roadmap/{idea_id}": {
       "post": {
         "tags": [
           "Roadmap"
         ],
         "summary": "Criar Roadmap",
         "description": "Cria um roadmap completo para uma ideia existente. O sistema gera automaticamente os passos (steps), tarefas (tasks) e uma imagem visual do roadmap usando IA.",
-        "operationId": "create_roadmap_api_roadmap_create_post",
+        "operationId": "create_roadmap_api_roadmap_idea_id_post",
         "security": [
           {
             "BearerAuth": []
@@ -556,13 +556,13 @@
         "parameters": [
           {
             "name": "idea_id",
-            "in": "query",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "title": "Idea ID"
             },
-            "description": "ID único da ideia para gerar o roadmap",
+            "description": "ID único da ideia para gerar o roadmap (path parameter)",
             "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           {
@@ -908,6 +908,66 @@
           }
         }
       }
+    },
+    "/api/roadmap/": {
+      "get": {
+        "tags": [
+          "Roadmap"
+        ],
+        "summary": "Listar Roadmaps",
+        "description": "Obtém todos os roadmaps do usuário autenticado.",
+        "operationId": "get_roadmaps_api_roadmap__get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de roadmaps retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoadmapDetail"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "660e8400-e29b-41d4-a716-446655440001",
+                    "idea_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "exported_to": "notion",
+                    "generated_at": "2023-10-10T10:00:00Z",
+                    "steps": [
+                      {
+                        "id": "770e8400-e29b-41d4-a716-446655440002",
+                        "step_order": 1,
+                        "title": "Pesquisa de Mercado",
+                        "description": "Realizar pesquisa de mercado para validar a ideia.",
+                        "tasks": [
+                          {
+                            "id": "880e8400-e29b-41d4-a716-446655440003",
+                            "task_order": 1,
+                            "description": "Entrevistar potenciais usuários.",
+                            "suggested_tools": ["Google Forms", "Typeform"]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Token de autenticação ausente ou inválido"
+          },
+          "500": {
+            "description": "Erro ao obter roadmaps"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1003,36 +1063,42 @@
       },
       "IdeaResponse": {
         "properties": {
-          "id": {
+           "id": {
+             "type": "string",
+             "title": "ID",
+             "description": "ID único da ideia"
+           },
+           "user_id": {
+             "type": "string",
+             "title": "User ID",
+             "description": "ID do usuário que criou a ideia"
+           },
+           "title": {
+             "type": "string",
+             "title": "Title",
+             "description": "Título ou descrição da ideia"
+           },
+           "ai_classification": {
+             "type": "string",
+             "title": "AI Classification",
+             "description": "Classificação gerada automaticamente pela IA"
+           },
+           "status": {
+             "type": "string",
+             "title": "Status",
+             "description": "Status da ideia (DRAFT, ACTIVE, ARCHIVED, etc.)"
+           },
+          "created_at": {
             "type": "string",
-            "title": "ID",
-            "description": "ID único da ideia"
-          },
-          "user_id": {
-            "type": "string",
-            "title": "User ID",
-            "description": "ID do usuário que criou a ideia"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title",
-            "description": "Título ou descrição da ideia"
-          },
-          "ai_classification": {
-            "type": "string",
-            "title": "AI Classification",
-            "description": "Classificação gerada automaticamente pela IA"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "description": "Status da ideia (DRAFT, ACTIVE, ARCHIVED, etc.)"
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Data de criação da ideia em formato ISO 8601"
           }
-        },
-        "type": "object",
-        "required": ["id", "user_id", "title", "ai_classification", "status"],
-        "title": "IdeaResponse"
-      },
+         },
+         "type": "object",
+         "required": ["id", "user_id", "title", "ai_classification", "status", "created_at"],
+         "title": "IdeaResponse"
+       },
       "IdeaEdit": {
         "properties": {
           "title": {
@@ -1059,12 +1125,11 @@
       "LoginSuccess": {
         "properties": {
           "access_token": { "type": "string" },
-          "token_type": { "type": "string" },
           "name": { "type": "string", "nullable": true },
           "email": { "type": "string", "format": "email", "nullable": true }
         },
         "type": "object",
-        "required": ["access_token", "token_type"],
+        "required": ["access_token"],
         "title": "LoginSuccess"
       },
       "RegisterSuccess": {
@@ -1172,15 +1237,16 @@
       },
       "RoadmapDetail": {
         "properties": {
-          "id": { "type": "string", "title": "ID", "description": "ID único do roadmap" },
-          "idea_id": { "type": "string", "title": "Idea ID", "description": "ID da ideia associada" },
-          "exported_to": { "type": "string", "title": "Exported To", "description": "Plataforma de exportação" },
-          "steps": { "type": "array", "items": { "$ref": "#/components/schemas/RoadmapStep" }, "title": "Steps", "description": "Lista de passos do roadmap" }
-        },
-        "type": "object",
-        "required": ["id", "idea_id", "steps"],
-        "title": "RoadmapDetail"
-      },
+           "id": { "type": "string", "title": "ID", "description": "ID único do roadmap" },
+           "idea_id": { "type": "string", "title": "Idea ID", "description": "ID da ideia associada" },
+           "exported_to": { "type": "string", "title": "Exported To", "description": "Plataforma de exportação" },
+          "generated_at": { "type": "string", "format": "date-time", "title": "Generated At", "description": "Data de geração do roadmap", "nullable": true },
+           "steps": { "type": "array", "items": { "$ref": "#/components/schemas/RoadmapStep" }, "title": "Steps", "description": "Lista de passos do roadmap" }
+         },
+         "type": "object",
+         "required": ["id", "idea_id", "steps"],
+         "title": "RoadmapDetail"
+       },
       "RoadmapStep": {
         "properties": {
           "id": { "type": "string", "title": "ID", "description": "ID único do step" },
