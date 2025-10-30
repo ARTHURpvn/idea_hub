@@ -63,28 +63,37 @@ def _extract_user_info(user_record) -> tuple:
     Accepts dict with keys 'email' and 'name', or tuple/list (email, name) or (name,email).
     Returns (name, email) or (None, None) on failure.
     """
+    # Robust extraction: always ensure `email` is either a valid-looking email (contains '@') or None
     if not user_record:
         return None, None
+
+    def _is_email(val):
+        return isinstance(val, str) and "@" in val
+
     # dict case
     if isinstance(user_record, dict):
-        email = user_record.get("email")
+        raw_email = user_record.get("email")
+        email = raw_email if _is_email(raw_email) else None
         name = user_record.get("name")
         return name, email
-    # tuple/list case: try common orders
+
+    # tuple/list case: try to find which element looks like an email
     if isinstance(user_record, (list, tuple)):
-        if len(user_record) >= 2:
-            # Most DB queries in this project return (email, name) for get_user_query
-            first, second = user_record[0], user_record[1]
-            # Heuristic: if first contains '@', it's email
-            if isinstance(first, str) and "@" in first:
-                email, name = first, second
-                return name, email
-            # else if second contains '@', swap
-            if isinstance(second, str) and "@" in second:
-                email, name = second, first
-                return name, email
-            # fallback: treat first as name, second as email
-            return first, second
+        # find first element that looks like an email
+        email = None
+        name = None
+        for elem in user_record:
+            if _is_email(elem):
+                email = elem
+                break
+        # name: prefer a string element that's not the email, fallback to first string
+        for elem in user_record:
+            if isinstance(elem, str) and elem != email:
+                name = elem
+                break
+
+        return name, email
+
     # unknown format
     return None, None
 

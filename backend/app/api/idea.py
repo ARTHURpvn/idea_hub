@@ -30,6 +30,7 @@ class IdeaResponse(BaseModel):
     title: str
     ai_classification: str
     status: str
+    created_at: str
 
 class IdeaEdit(BaseModel):
     title: Optional[str] = None
@@ -106,14 +107,14 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
                 detail="Erro ao criar ideia no banco de dados"
             )
 
-
-        return IdeaResponse(
-            id=idea_id,
-            user_id=user_id,
-            title=idea_data.title,
-            ai_classification=ai_classification,
-            status="DRAFT"
-        )
+        # Fetch the created idea including created_at and return it so it matches the response_model
+        created_idea = get_idea_by_id(idea_id)
+        if not created_idea:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao obter ideia criada"
+            )
+        return created_idea
 
     except HTTPException:
         raise

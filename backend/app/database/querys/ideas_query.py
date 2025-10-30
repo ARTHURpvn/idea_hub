@@ -137,18 +137,22 @@ def get_all_ideas(user_id: str) -> list[dict] | None:
         print(f"Erro de conexao ao pegar ideas: {e}")
         return None
     try:
-        cur.execute("SELECT id, user_id, title, status, ai_classification, raw_content FROM ideas WHERE user_id = %s", (user_id,))
+        # Include created_at in the select and format to ISO string if present
+        cur.execute("SELECT id, user_id, title, status, ai_classification, created_at, raw_content FROM ideas WHERE user_id = %s", (user_id,))
         rows = cur.fetchall()
 
         ideas = []
         for row in rows:
+            created_at = row[5]
+            created_at_str = created_at.isoformat() if getattr(created_at, 'isoformat', None) else None
             ideas.append({
                 "id": str(row[0]),
                 "user_id": str(row[1]),
                 "title": row[2],
                 "status": row[3],
                 "ai_classification": row[4],
-                "raw_content": row[5]
+                "created_at": created_at_str,
+                "raw_content": row[6]
             })
         return ideas
     except Exception as e:
@@ -180,17 +184,21 @@ def get_idea_by_id(idea_id: str) -> dict | None:
         return None
 
     try:
-        cur.execute("SELECT id, user_id, title, status, ai_classification, raw_content FROM ideas WHERE id = %s", (idea_id,))
+        # Return created_at as ISO string when possible
+        cur.execute("SELECT id, user_id, title, status, ai_classification, created_at, raw_content FROM ideas WHERE id = %s", (idea_id,))
         row = cur.fetchone()
 
         if row:
+            created_at = row[5]
+            created_at_str = created_at.isoformat() if getattr(created_at, 'isoformat', None) else None
             return {
                 "id": str(row[0]),
                 "user_id": str(row[1]),
                 "title": row[2],
                 "status": row[3],
                 "ai_classification": row[4],
-                "raw_content": row[5]
+                "created_at": created_at_str,
+                "raw_content": row[6]
             }
         return None
     except Exception as e:
@@ -224,7 +232,7 @@ def edit_idea_status(idea_id: str, new_status: str) -> bool:
         return False
 
     try:
-        cur.execute("UPDATE ideas SET status = %s WHERE id = %s", (new_status, idea_id))
+        cur.execute("UPDATE ideas SET status = %s, updated_at = NOW() WHERE id = %s", (new_status, idea_id))
         conn.commit()
         return True
     except Exception as e:
@@ -257,7 +265,8 @@ def edit_idea_content(idea_id: str, content: str) -> bool:
         return False
 
     try:
-        cur.execute("UPDATE ideas SET raw_content = %s WHERE id = %s", (content, idea_id))
+        # update raw_content and set updated_at to current timestamp
+        cur.execute("UPDATE ideas SET raw_content = %s, updated_at = NOW() WHERE id = %s", (content, idea_id))
         conn.commit()
         create_idea_version(idea_id, content)
         return True
@@ -295,8 +304,9 @@ def update_idea(idea_id: str, idea: Idea) -> bool:
         return False
 
     try:
+        # update multiple fields and touch updated_at
         cur.execute(
-            "UPDATE ideas SET title = %s, ai_classification = %s WHERE id = %s",
+            "UPDATE ideas SET title = %s, ai_classification = %s, updated_at = NOW() WHERE id = %s",
             (idea.title, idea.ai_classification, idea_id)
         )
         conn.commit()

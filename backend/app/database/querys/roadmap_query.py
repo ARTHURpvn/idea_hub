@@ -284,9 +284,10 @@ def update_roadmap_image_path(roadmap_id: str, image_path: str) -> bool:
         return False
 
     try:
+        # Update exported_to and touch updated_at
         cur.execute("""
             UPDATE roadmaps
-            SET exported_to = %s
+            SET exported_to = %s, updated_at = NOW()
             WHERE id = %s
         """, (image_path, roadmap_id))
 
