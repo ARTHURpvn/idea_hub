@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import {LoginPayload, req_login, req_register} from "../requests/auth";
+import {LoginPayload, req_login, req_register} from "../requests/auth_reqs";
 import { setCookie, getCookie } from "cookies-next/client";
 import { toast } from "sonner";
 

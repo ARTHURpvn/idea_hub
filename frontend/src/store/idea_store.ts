@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import {getIdeas, IdeaResponse, Status} from "../requests/idea";
+import {getIdeas, IdeaResponse, Status} from "../requests/idea_reqs";
 import {createJSONStorage, persist } from "zustand/middleware";
 
 interface RecentIdea {
@@ -22,7 +22,7 @@ interface IdeaStore {
 }
 
 interface IdeaStoreActions {
-    mapResponse: () => Promise<void>,
+    mapIdeas: () => Promise<void>,
 }
 
 export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
@@ -37,7 +37,7 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
             ideaCreatedThisMonth: 0,
             recentIdeas: [],
 
-            mapResponse: async() => {
+            mapIdeas: async() => {
                 const response = await getIdeas()
 
                 if (!response || response.length === 0) {

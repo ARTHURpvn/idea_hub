@@ -28,7 +28,8 @@ import {
 import { useAuthStore } from "@/store/auth_store";
 import { useIdeaStore } from "@/store/idea_store";
 import { useEffect } from "react";
-import { Status } from "@/requests/idea";
+import { Status } from "@/requests/idea_reqs";
+import { useRoadmapStore } from "@/store/roadmap_store";
 
 const fallbackData = [
     { name: "Jun", ideias: 2 },
@@ -39,9 +40,10 @@ const fallbackData = [
 ];
 
 export default function Dashboard() {
-    // use store selectors so component re-renders on updates
-    const name = useAuthStore((state) => state.name) ?? "User Name";
-    const mapResponse = useIdeaStore((state) => state.mapResponse);
+    const mapIdeas = useIdeaStore((state) => state.mapIdeas);
+    const mapRoadmaps = useRoadmapStore.getState().mapRoadmaps
+
+    const name = useAuthStore((state) => state.name) || "User Name";
     const created = useIdeaStore((state) => state.ideaCreated) || 0;
     const progress = useIdeaStore((state) => state.ideaProgress) || 0;
     const finished = useIdeaStore((state) => state.ideaFinished) || 0;
@@ -49,10 +51,14 @@ export default function Dashboard() {
     const monthlyCounts = useIdeaStore((state) => state.monthlyCounts) || [];
     const ideaCreatedThisMonth = useIdeaStore((state) => state.ideaCreatedThisMonth) || 0;
     const recentIdeas = useIdeaStore((state) => state.recentIdeas) || [];
+    const createdRoadmap = useRoadmapStore((state) => state.createdRoadmap) || 0;
 
     useEffect(() => {
-        mapResponse().catch((err) => console.error("Failed to map responses:", err));
-    }, [mapResponse]);
+        mapIdeas().catch((err) => console.error("Failed to map responses:", err));
+    }, [mapIdeas]);
+    useEffect(() => {
+        mapRoadmaps().catch((err) => console.error("Failed to map responses:", err));
+    }, [mapRoadmaps]);
 
     // prepare chart data aligning months -> monthlyCounts
     const chartData = months.length && monthlyCounts.length
@@ -77,13 +83,20 @@ export default function Dashboard() {
     return (
         <div className="p-8 space-y-10 max-w-7xl mx-auto">
             {/* Cabeçalho */}
-            <header className="space-y-1">
-                <h1 className="text-3xl font-bold tracking-tight">
-                    Bem-vindo de volta, <span className="text-primary">{name}</span> 👋
-                </h1>
-                <p className="text-muted-foreground">
-                    Aqui está um resumo das suas ideias e atividades recentes.
-                </p>
+            <header className="flex flex-col gap-6 lg:flex-row justify-between items-end lg:items-start">
+                <div className={"space-y-1"}>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                        Bem-vindo de volta, <span className="text-primary">{name}</span>
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Aqui está um resumo das suas ideias e atividades recentes.
+                    </p>
+                </div>
+                <div>
+                    <Button>
+                        + Criar Ideia
+                    </Button>
+                </div>
             </header>
 
             {/* Cards principais */}
@@ -108,7 +121,7 @@ export default function Dashboard() {
                 />
                 <MetricCard
                     title="Roadmap"
-                    value="6"
+                    value={String(createdRoadmap)}
                     subtitle="Roadmap Criado pelo Sistema"
                     icon={<SquareKanban size={22} />}
                 />
@@ -164,6 +177,7 @@ export default function Dashboard() {
                                     radius={[10, 10, 6, 6]}
                                     barSize={32}
                                     animationDuration={900}
+                                    animationEasing="ease-out"
                                     isAnimationActive={true}
                                 >
                                     <LabelList dataKey="ideias" position="top" className="text-xs text-foreground" />
@@ -199,7 +213,7 @@ export default function Dashboard() {
                                             {idea.title}
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
-                                            {String(idea.status)} • {fmtDate(idea.created_at)}
+                                            {String(idea.status)}
                                         </p>
                                     </div>
                                     <Button size="sm" variant="outline">

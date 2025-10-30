@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthAwareLayout from "../components/AuthAwareLayout";
 import { useIdeaStore } from "@/store/idea_store";
+import { useRoadmapStore } from "@/store/roadmap_store";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,8 +25,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-    const mapResponse = useIdeaStore.getState().mapResponse
-    mapResponse()
+    const mapIdeas = useIdeaStore.getState().mapIdeas
+    const mapRoadmaps = useRoadmapStore.getState().mapRoadmaps
+
+    mapIdeas()
+    mapRoadmaps()
   return (
     <html lang="en">
       <body
