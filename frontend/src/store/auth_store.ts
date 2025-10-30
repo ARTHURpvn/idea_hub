@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     return false
                 }
 
-                // set token cookie (client cannot set httpOnly)
+                // set token cookie
                 setCookie("token", res.access_token, {
                     maxAge: 60 * 60, // 1 hour
                     path: "/",
@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
                 setTimeout(() => {
                     window.location.href = "/dashboard"
-                }, 2000)
+                }, 1000)
                 return true
             },
 
