@@ -29,6 +29,7 @@ class IdeaResponse(BaseModel):
     user_id: str
     title: str
     ai_classification: str
+    tags: list[str]
     status: str
     created_at: str
 

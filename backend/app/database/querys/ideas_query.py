@@ -118,17 +118,10 @@ def create_idea(idea: Idea) -> str | None:
 
 def get_all_ideas(user_id: str) -> list[dict] | None:
     """
-    Fetches a list of ideas associated with the given user.
+    Fetches a list of ideas associated with the given user, including tag names.
 
-    This function retrieves all ideas that are linked to the user identified
-    by the provided user_id. It allows access to user-specific ideas for
-    further processing or display.
-
-    :param user_id: The unique identifier of the user whose ideas are to
-        be retrieved.
-    :return: A list of dict objects representing the ideas linked to the
-        specified user.
-    :rtype: list[dict] | None
+    Uses a single SQL query with LEFT JOIN and array_agg to collect tag names
+    for each idea to avoid N+1 queries.
     """
 
     try:
@@ -136,15 +129,36 @@ def get_all_ideas(user_id: str) -> list[dict] | None:
     except Exception as e:
         print(f"Erro de conexao ao pegar ideas: {e}")
         return None
+
     try:
-        # Include created_at in the select and format to ISO string if present
-        cur.execute("SELECT id, user_id, title, status, ai_classification, created_at, raw_content FROM ideas WHERE user_id = %s", (user_id,))
+        cur.execute(
+            """
+            SELECT
+                i.id,
+                i.user_id,
+                i.title,
+                i.status,
+                i.ai_classification,
+                i.created_at,
+                i.raw_content,
+                COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL), ARRAY[]::text[]) AS tags
+            FROM ideas i
+            LEFT JOIN idea_tags it ON it.idea_id = i.id
+            LEFT JOIN tags t ON t.id = it.tag_id
+            WHERE i.user_id = %s
+            GROUP BY i.id, i.user_id, i.title, i.status, i.ai_classification, i.created_at, i.raw_content
+            ORDER BY i.created_at DESC
+            """,
+            (user_id,)
+        )
         rows = cur.fetchall()
 
-        ideas = []
+        ideas: list[dict] = []
         for row in rows:
             created_at = row[5]
             created_at_str = created_at.isoformat() if getattr(created_at, 'isoformat', None) else None
+            tags_list = row[7] if row[7] is not None else []
+
             ideas.append({
                 "id": str(row[0]),
                 "user_id": str(row[1]),
@@ -152,8 +166,10 @@ def get_all_ideas(user_id: str) -> list[dict] | None:
                 "status": row[3],
                 "ai_classification": row[4],
                 "created_at": created_at_str,
-                "raw_content": row[6]
+                "raw_content": row[6],
+                "tags": tags_list,
             })
+
         return ideas
     except Exception as e:
         print(f"Erro ao pegar ideas: {e}")
