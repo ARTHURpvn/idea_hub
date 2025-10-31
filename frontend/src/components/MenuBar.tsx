@@ -131,7 +131,7 @@ export default function AppSidebar() {
                 cn("flex flex-row items-center border-t border-border py-4 mx-4 mt-auto", open ? "justify-between" : "justify-center"
                 )}>
                 <div className={cn("flex items-center", open ? "flex-row gap-4 mr-2" : "justify-center w-full")}>
-                    <div className={"flex justify-center items-center size-10 bg-primary rounded-md"}>
+                    <div className={"flex justify-center items-center size-10 bg-secondary rounded-md"}>
                         <UserIcon/>
                     </div>
                     <div

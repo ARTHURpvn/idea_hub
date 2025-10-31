@@ -11,6 +11,7 @@ interface RoadmapStore {
 interface RoadmapStoreActions {
     mapRoadmaps: () => Promise<void>,
     createRoadmap: (id: string, exported_to: string) => Promise<void>,
+    setNull: () => void,
 }
 
 export const useRoadmapStore = create<RoadmapStore & RoadmapStoreActions>()(
@@ -28,7 +29,13 @@ export const useRoadmapStore = create<RoadmapStore & RoadmapStoreActions>()(
             createRoadmap: async(id: string, exported_to: string) => {
                 const res = await createRoadmap(id, exported_to)
                 if (res) toast.success("Roadmap criada com sucesso")
-            }
+            },
+            setNull: () => {
+                set({
+                    createdRoadmap: 0,
+                    roadmaps: [],
+                })
+            },
         }),
         {
             name: "roadmap-storage",

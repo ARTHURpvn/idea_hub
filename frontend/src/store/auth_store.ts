@@ -87,8 +87,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     sameSite: "strict",
                     secure: true
                 })
-
-                toast.success("Desconectado com sucesso")
+                localStorage.clear()
+               toast.success("Desconectado com sucesso")
                 window.location.href = "/auth/login"
             }
         }),

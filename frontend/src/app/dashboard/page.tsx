@@ -19,17 +19,14 @@ import {
     LabelList,
 } from "recharts";
 import {
-    Lightbulb,
-    Rocket,
-    Brain,
     Clock,
-    SquareKanban,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth_store";
 import { useIdeaStore } from "@/store/idea_store";
 import { useEffect } from "react";
 import { Status } from "@/requests/idea_reqs";
 import { useRoadmapStore } from "@/store/roadmap_store";
+import MetricCard from "./components/MetricCards";
 
 const fallbackData = [
     { name: "Jun", ideias: 2 },
@@ -44,14 +41,9 @@ export default function Dashboard() {
     const mapRoadmaps = useRoadmapStore.getState().mapRoadmaps
 
     const name = useAuthStore((state) => state.name) || "User Name";
-    const created = useIdeaStore((state) => state.ideaCreated) || 0;
-    const progress = useIdeaStore((state) => state.ideaProgress) || 0;
-    const finished = useIdeaStore((state) => state.ideaFinished) || 0;
     const months = useIdeaStore((state) => state.months) || [];
     const monthlyCounts = useIdeaStore((state) => state.monthlyCounts) || [];
-    const ideaCreatedThisMonth = useIdeaStore((state) => state.ideaCreatedThisMonth) || 0;
     const recentIdeas = useIdeaStore((state) => state.recentIdeas) || [];
-    const createdRoadmap = useRoadmapStore((state) => state.createdRoadmap) || 0;
 
     useEffect(() => {
         mapIdeas().catch((err) => console.error("Failed to map responses:", err));
@@ -86,14 +78,14 @@ export default function Dashboard() {
             <header className="flex flex-col gap-6 lg:flex-row justify-between items-end lg:items-start">
                 <div className={"space-y-1"}>
                     <h1 className="text-3xl font-bold tracking-tight">
-                        Bem-vindo de volta, <span className="text-primary">{name}</span>
+                        Bem-vindo de volta, <span className="text-secondary">{name}</span>
                     </h1>
                     <p className="text-muted-foreground">
                         Aqui está um resumo das suas ideias e atividades recentes.
                     </p>
                 </div>
                 <div>
-                    <Button>
+                    <Button variant="secondary">
                         + Criar Ideia
                     </Button>
                 </div>
@@ -101,30 +93,10 @@ export default function Dashboard() {
 
             {/* Cards principais */}
             <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <MetricCard
-                    title="Ideias criadas"
-                    value={String(created)}
-                    subtitle={`+${String(ideaCreatedThisMonth)} este mês`}
-                    icon={<Lightbulb size={22} />}
-                />
-                <MetricCard
-                    title="Em progresso"
-                    value={String(progress)}
-                    subtitle="2 com IA"
-                    icon={<Rocket size={22} />}
-                />
-                <MetricCard
-                    title="Finalizadas"
-                    value={String(finished)}
-                    subtitle="Prontas para execução"
-                    icon={<Brain size={22} />}
-                />
-                <MetricCard
-                    title="Roadmap"
-                    value={String(createdRoadmap)}
-                    subtitle="Roadmap Criado pelo Sistema"
-                    icon={<SquareKanban size={22} />}
-                />
+                <MetricCard type="Created" />
+                <MetricCard type="Progress" />
+                <MetricCard type="Finished" />
+                <MetricCard type="Roadmap" />
             </section>
 
             {/* Gráfico */}
@@ -244,30 +216,6 @@ export default function Dashboard() {
     );
 }
 
-/* === Components === */
-interface MetricCardProps {
-    title: string;
-    value: string;
-    subtitle: string;
-    icon: React.ReactNode;
-}
-
-function MetricCard({ title, value, subtitle, icon }: MetricCardProps) {
-    return (
-        <Card className="bg-card border border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {title}
-                </CardTitle>
-                <div className="text-primary">{icon}</div>
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold text-foreground">{value}</div>
-                <p className="text-sm text-muted-foreground">{subtitle}</p>
-            </CardContent>
-        </Card>
-    );
-}
 
 function Interaction({ text }: { text: string }) {
     return (

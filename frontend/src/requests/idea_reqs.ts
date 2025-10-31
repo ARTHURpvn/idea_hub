@@ -15,6 +15,7 @@ export interface IdeaResponse {
     raw_content?: string;
     month?: number;
     created_at?: string;
+    tags?: string[];
 }
 
 export interface IdeaCreate {
@@ -94,6 +95,7 @@ export const getIdeas = async (): Promise<IdeaResponse[]> => {
             return [];
         }
 
+        console.log(raw)
 
         const mapped: IdeaResponse[] = raw.map((idea) => ({
             id: idea.id ?? undefined,

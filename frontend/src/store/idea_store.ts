@@ -8,6 +8,7 @@ interface RecentIdea {
     status: Status;
     ai_classification: string;
     created_at?: string;
+    tags?: string[];
 }
 
 interface IdeaStore {
@@ -23,6 +24,7 @@ interface IdeaStore {
 
 interface IdeaStoreActions {
     mapIdeas: () => Promise<void>,
+    setNull: () => void,
 }
 
 export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
@@ -36,6 +38,17 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
             responses: [],
             ideaCreatedThisMonth: 0,
             recentIdeas: [],
+
+            setNull: () => {
+                set({
+                    ideaCreated: 0,
+                    ideaProgress: 0,
+                    ideaFinished: 0,
+                    months: [],
+                    monthlyCounts: [],
+                    responses: [],
+                })
+            },
 
             mapIdeas: async() => {
                 const response = await getIdeas()
@@ -53,6 +66,8 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     });
                     return;
                 }
+
+
 
                 const counts = response.reduce(
                     (acc, item) => {
