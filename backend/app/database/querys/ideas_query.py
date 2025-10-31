@@ -183,15 +183,9 @@ def get_all_ideas(user_id: str) -> list[dict] | None:
 
 def get_idea_by_id(idea_id: str) -> dict | None:
     """
-    Fetches an idea by its unique identifier.
+    Fetches an idea by its unique identifier, including tag names.
 
-    This function retrieves an idea object based on the given unique identifier.
-    If no idea is found with the provided identifier, the function will return None.
-
-    :param idea_id: Identifier for the idea to retrieve.
-    :type idea_id: str
-    :return: The Idea dict if found; otherwise None.
-    :rtype: dict | None
+    Returns created_at as ISO string and tags as a list of strings.
     """
     try:
         conn, cur = get_db_conn(db_name)
@@ -200,13 +194,31 @@ def get_idea_by_id(idea_id: str) -> dict | None:
         return None
 
     try:
-        # Return created_at as ISO string when possible
-        cur.execute("SELECT id, user_id, title, status, ai_classification, created_at, raw_content FROM ideas WHERE id = %s", (idea_id,))
+        cur.execute(
+            """
+            SELECT
+                i.id,
+                i.user_id,
+                i.title,
+                i.status,
+                i.ai_classification,
+                i.created_at,
+                i.raw_content,
+                COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL), ARRAY[]::text[]) AS tags
+            FROM ideas i
+            LEFT JOIN idea_tags it ON it.idea_id = i.id
+            LEFT JOIN tags t ON t.id = it.tag_id
+            WHERE i.id = %s
+            GROUP BY i.id, i.user_id, i.title, i.status, i.ai_classification, i.created_at, i.raw_content
+            """,
+            (idea_id,)
+        )
         row = cur.fetchone()
 
         if row:
             created_at = row[5]
             created_at_str = created_at.isoformat() if getattr(created_at, 'isoformat', None) else None
+            tags_list = row[7] if row[7] is not None else []
             return {
                 "id": str(row[0]),
                 "user_id": str(row[1]),
@@ -214,7 +226,8 @@ def get_idea_by_id(idea_id: str) -> dict | None:
                 "status": row[3],
                 "ai_classification": row[4],
                 "created_at": created_at_str,
-                "raw_content": row[6]
+                "raw_content": row[6],
+                "tags": tags_list,
             }
         return None
     except Exception as e:

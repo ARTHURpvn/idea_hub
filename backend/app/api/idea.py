@@ -115,6 +115,9 @@ async def create(idea_data: IdeaCreate, authorization: str = Header(...)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao obter ideia criada"
             )
+        # Safety: ensure tags key exists to satisfy response_model validation
+        if 'tags' not in created_idea or created_idea.get('tags') is None:
+            created_idea['tags'] = []
         return created_idea
 
     except HTTPException:
@@ -168,6 +171,10 @@ def get_ideas(authorization: str = Header(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao obter ideias"
         )
+    # Safety: ensure each idea has tags key
+    for it in ideas:
+        if 'tags' not in it or it.get('tags') is None:
+            it['tags'] = []
 
     return ideas
 
