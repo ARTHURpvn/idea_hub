@@ -16,6 +16,7 @@ from ..database.querys.ideas_query import (
     update_idea,
     delete_idea_by_id
 )
+from ..database.querys.tag_query import replace_tags_for_idea
 
 router = APIRouter()
 
@@ -37,6 +38,7 @@ class IdeaEdit(BaseModel):
     title: Optional[str] = None
     status: Optional[str] = None
     content: Optional[str] = None
+    tags: Optional[list[str]] = None
 
 
 
@@ -308,6 +310,19 @@ async def edit_idea_endpoint(idea_id: str, idea_data: IdeaEdit, authorization: s
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao editar título da ideia"
+            )
+
+    # Atualizar tags (substitui tags existentes)
+    if idea_data.tags is not None:
+        try:
+            ok = replace_tags_for_idea(idea_id, idea_data.tags)
+            if not ok:
+                raise Exception('Falha ao atualizar tags')
+        except Exception as e:
+            print(f"Erro ao substituir tags: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao atualizar tags da ideia"
             )
 
     # Retornar ideia atualizada

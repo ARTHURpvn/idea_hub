@@ -166,3 +166,53 @@ def get_tag_by_name(name: str):
             conn.close()
         except Exception as e:
             print(f"Erro ao fechar conexao: {e}")
+
+def replace_tags_for_idea(idea_id: str, tags: list[str]) -> bool:
+    """Replace all tags for the given idea.
+
+    This deletes existing rows in `idea_tags` for the idea and then ensures
+    each provided tag exists and is linked to the idea (using `create_tag`).
+    Returns True on success, False on error.
+    """
+    try:
+        # Remove existing mappings
+        conn, cur = get_db_conn(db_name)
+    except Exception as e:
+        print(f"Erro de conexao ao substituir tags: {e}")
+        return False
+
+    try:
+        cur.execute("DELETE FROM idea_tags WHERE idea_id = %s", (idea_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"Erro ao deletar mapeamentos de tags: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+        return False
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    # Recreate tags and mappings using create_tag helper (it handles creating tag row and idea_tags row)
+    try:
+        for tag_name in tags or []:
+            try:
+                tg = Tag(idea_id=idea_id, name=tag_name)
+                create_tag(tg)
+            except Exception as e:
+                print(f"Erro ao criar/vincular tag '{tag_name}': {e}")
+                # continue with other tags
+        return True
+    except Exception as e:
+        print(f"Erro geral ao substituir tags: {e}")
+        return False
