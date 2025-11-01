@@ -27,6 +27,7 @@ import { useEffect } from "react";
 import { Status } from "@/requests/idea_reqs";
 import { useRoadmapStore } from "@/store/roadmap_store";
 import MetricCard from "./components/MetricCards";
+import AddIdea from "../ideas/components/AddIdea";
 
 const fallbackData = [
     { name: "Jun", ideias: 2 },
@@ -85,9 +86,7 @@ export default function Dashboard() {
                     </p>
                 </div>
                 <div>
-                    <Button variant="secondary">
-                        + Criar Ideia
-                    </Button>
+                    <AddIdea variant={"default"}/>
                 </div>
             </header>
 

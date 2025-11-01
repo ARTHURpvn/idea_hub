@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import {getIdeas, IdeaResponse, Status} from "../requests/idea_reqs";
+import {createIdea, getIdeas, IdeaDTO, IdeaResponse, Status, updateIdea as apiUpdateIdea, parseStatus, deleteIdea as apiDeleteIdea} from "../requests/idea_reqs";
 import {createJSONStorage, persist } from "zustand/middleware";
+import { toast } from "sonner";
 
 interface RecentIdea {
     id?: string;
@@ -24,12 +25,14 @@ interface IdeaStore {
 
 interface IdeaStoreActions {
     mapIdeas: () => Promise<void>,
-    setNull: () => void,
+    createIdea: (title: string, tags: string[]) => Promise<boolean>,
+    updateIdea: (idea: Partial<IdeaDTO>) => Promise<boolean>,
+    deleteIdea: (id?: string) => Promise<boolean>,
 }
 
 export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             ideaCreated: 0,
             ideaProgress: 0,
             ideaFinished: 0,
@@ -38,17 +41,6 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
             responses: [],
             ideaCreatedThisMonth: 0,
             recentIdeas: [],
-
-            setNull: () => {
-                set({
-                    ideaCreated: 0,
-                    ideaProgress: 0,
-                    ideaFinished: 0,
-                    months: [],
-                    monthlyCounts: [],
-                    responses: [],
-                })
-            },
 
             mapIdeas: async() => {
                 const response = await getIdeas()
@@ -66,8 +58,6 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     });
                     return;
                 }
-
-
 
                 const counts = response.reduce(
                     (acc, item) => {
@@ -120,20 +110,138 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     ideaCreatedThisMonth,
                     recentIdeas: recent,
                 });
-             }
+             },
 
-         }),
-        {
-            name: "idea-storage",
-            storage: createJSONStorage(() =>
-                typeof window !== "undefined" && typeof window.localStorage !== "undefined"
-                    ? window.localStorage
-                    : {
-                        getItem: (_key: string) => null,
-                        setItem: (_key: string, _value: string) => {},
-                        removeItem: (_key: string) => {},
+            createIdea: async(title: string, tags: string[]) => {
+                const idea = {title, tags}
+                try {
+                    const response = await createIdea(idea)
+                    if(response) {
+                        toast.success("Ideia criada com sucesso")
+                        // refresh mapped ideas in store so UI updates immediately
+                        try {
+                            const state = get()
+                            if (state && typeof state.mapIdeas === 'function') {
+                                await state.mapIdeas()
+                            }
+                        } catch (err) {
+                            console.warn('mapIdeas failed after createIdea', err)
+                        }
+                        return true
                     }
-            ),
-        }
-    )
+                    else {
+                        toast.error("Erro ao criar ideia")
+                        return false
+                    }
+                }
+                catch (error) {
+                    toast.error("Erro ao criar ideia")
+                    console.log(error)
+                    return false
+                }
+            },
+
+            updateIdea: async(idea: Partial<IdeaDTO>) => {
+                console.log('updateIdea called with:', idea)
+                try {
+                    let res = await apiUpdateIdea(idea)
+                    // if first attempt failed and we have a status number, try with string code
+                    if (!res && idea && typeof (idea as any).status === 'number') {
+                        const num = (idea as any).status
+                        const toCode = num === 1 ? 'ACTIVE' : num === 2 ? 'FINISHED' : 'DRAFT'
+                        const alt = { ...idea, status: toCode }
+                        console.warn('Retrying update with status as string code:', toCode)
+                        res = await apiUpdateIdea(alt)
+                    }
+                    if (res) {
+                        toast.success("Ideia atualizada com sucesso")
+
+                        // Optimistically update local `responses` using server-returned object
+                        try {
+                            if (res.id) {
+                                const serverStatus = parseStatus(res.status)
+                                set((prev) => {
+                                    const updatedResponses = prev.responses.map(r => {
+                                        if (r.id === res.id) {
+                                            return {
+                                                ...r,
+                                                title: res.title ?? r.title,
+                                                tags: Array.isArray(res.tags) ? res.tags : r.tags,
+                                                status: serverStatus ?? r.status,
+                                            }
+                                        }
+                                        return r
+                                    })
+                                    return { ...prev, responses: updatedResponses }
+                                })
+                            }
+                        } catch (err) {
+                            console.warn('failed to optimistically update responses', err)
+                        }
+
+                        // Also refresh mapped data to ensure aggregate counters are correct
+                        try {
+                            const state = get()
+                            if (state && typeof state.mapIdeas === 'function') {
+                                await state.mapIdeas()
+                            }
+                        } catch (err) {
+                            console.warn('mapIdeas failed after updateIdea', err)
+                        }
+
+                        return true
+                    }
+                    toast.error("Erro ao atualizar ideia")
+                    return false
+                } catch (err) {
+                    console.error('updateIdea error', err)
+                    toast.error("Erro ao atualizar ideia")
+                    return false
+                }
+            },
+
+            deleteIdea: async(id?: string) => {
+                if (!id) {
+                    toast.error('ID da ideia ausente')
+                    return false
+                }
+                try {
+                    const ok = await apiDeleteIdea(id)
+                    if (ok) {
+                        toast.success('Ideia removida')
+                        // optimistically remove from responses
+                        set((prev) => ({ ...prev, responses: prev.responses.filter(r => r.id !== id) }))
+                        // refresh mapped data
+                        try {
+                            const state = get()
+                            if (state && typeof state.mapIdeas === 'function') {
+                                await state.mapIdeas()
+                            }
+                        } catch (err) {
+                            console.warn('mapIdeas failed after deleteIdea', err)
+                        }
+                        return true
+                    }
+                    toast.error('Erro ao excluir ideia')
+                    return false
+                } catch (err) {
+                    console.error('deleteIdea error', err)
+                    toast.error('Erro ao excluir ideia')
+                    return false
+                }
+            },
+          }),
+         {
+             name: "idea-storage",
+             storage: createJSONStorage(() =>
+                 typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+                     ? window.localStorage
+                     : {
+                         getItem: (_key: string) => null,
+                         setItem: (_key: string, _value: string) => {},
+                         removeItem: (_key: string) => {},
+                     }
+             ),
+         }
+     )
 )
