@@ -1,0 +1,165 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+:root {
+  --tt-toolbar-height: 44px;
+  --tt-theme-text: var(--tt-gray-light-900);
+
+  --simple-editor-max-height: 100vh; /* controla altura máxima do card editor */
+  --simple-editor-max-height-inline: 89vh; /* altura quando embutido */
+  --simple-editor-max-width: 1100px;
+  --simple-editor-padding: 1.25rem;
+  --simple-editor-radius: 12px;
+  --simple-editor-bg: var(--tt-bg-color);
+  --simple-editor-card-bg: var(--white);
+  --simple-editor-shadow: 0 8px 30px rgba(16, 24, 40, 0.06);
+}
+
+.dark {
+  :root {
+    --tt-theme-text: var(--tt-gray-dark-900);
+    --simple-editor-card-bg: var(--tt-bg-color);
+    --simple-editor-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+  }
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  color: var(--tt-theme-text);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  padding: 0;
+  overscroll-behavior-y: none;
+}
+
+html,
+body {
+  overscroll-behavior-x: none;
+}
+
+html,
+body,
+#root,
+#app {
+  height: 100%;
+  background-color: var(--tt-bg-color);
+}
+
+::-webkit-scrollbar {
+  width: 0.25rem;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tt-scrollbar-color) transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--tt-scrollbar-color);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tiptap.ProseMirror {
+  font-family: "DM Sans", sans-serif;
+}
+
+.simple-editor-wrapper {
+  /* base wrapper - styles will be set per mode: .full-screen or .inline */
+  width: 100%;
+}
+
+.simple-editor-wrapper.full-screen {
+  /* centraliza o card vertical e horizontalmente quando em full-screen */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 2rem;
+  box-sizing: border-box;
+  background-color: var(--tt-bg-color);
+  overflow: auto; /* permite scroll quando o viewport for menor que o card */
+}
+
+.simple-editor-wrapper.inline {
+  /* quando embutido, deixe o wrapper agir como um bloco normal para não quebrar o layout pai */
+  display: block;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  overflow: visible;
+  min-height: auto;
+}
+
+.simple-editor-content {
+  max-width: var(--simple-editor-max-width);
+  width: 100%;
+  /* card menor que a tela */
+  max-height: var(--simple-editor-max-height);
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  background: var(--simple-editor-card-bg);
+  border-radius: var(--simple-editor-radius);
+  box-shadow: var(--simple-editor-shadow);
+  /* tornar este contêiner o scroll container para que a toolbar (sticky) fique limitada ao card */
+  overflow: auto;
+  border: 1px solid rgba(0,0,0,0.04);
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor {
+  flex: 1 1 auto;
+  /* rolagem acontece no pai (.simple-editor-content) para que a toolbar sticky funcione */
+  overflow: visible;
+  padding: calc(var(--simple-editor-padding) + 1.25rem) calc(var(--simple-editor-padding) + 1.25rem) 3rem;
+  min-height: 320px;
+}
+
+/* estilos quando o editor está embutido em outro container (inline) */
+.simple-editor-wrapper.inline {
+  /* quando embutido, deixe o wrapper agir como um bloco normal para não quebrar o layout pai */
+  display: block;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  overflow: visible;
+  min-height: auto;
+}
+
+.simple-editor-wrapper.inline .simple-editor-content {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  border: none;
+  max-height: var(--simple-editor-max-height-inline);
+}
+
+/* ajustes para modo inline (espaçamento reduzido) */
+.simple-editor-wrapper.inline .simple-editor-content .tiptap.ProseMirror.simple-editor {
+  padding: 1rem 1rem 2.5rem;
+}
+
+
+.simple-editor-content .tiptap-toolbar,
+.simple-editor-content .tiptap-toolbar[data-variant="floating"][data-plain="true"] {
+  /* use the editor card background variable so the toolbar visually matches the card */
+  background-color: var(--simple-editor-card-bg) !important;
+  /* keep a subtle border to separate toolbar from content (matches editor card) */
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  /* ensure toolbar is above content */
+  z-index: 11;
+}
+
+.dark .simple-editor-content .tiptap-toolbar,
+.dark .simple-editor-content .tiptap-toolbar[data-variant="floating"][data-plain="true"] {
+  background-color: #0B1723FF !important;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  z-index: 11;
+}

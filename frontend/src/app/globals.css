@@ -114,4 +114,7 @@
     body {
         @apply bg-background text-foreground;
     }
+    .simple-editor-content {
+        @apply w-full;
+    }
 }

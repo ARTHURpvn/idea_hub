@@ -17,7 +17,7 @@ const proxy = (req: NextRequest) => {
         return NextResponse.next();
     }
 
-    const isAuthRoute = pathname.startsWith("/auth") || pathname.startsWith("/login") || pathname.startsWith("/register");
+    const isAuthRoute = pathname.startsWith("/auth");
     const isProtected: boolean = !isAuthRoute;
 
     if (isProtected) {
