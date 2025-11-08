@@ -30,6 +30,7 @@ class IdeaResponse(BaseModel):
     user_id: str
     title: str
     ai_classification: str
+    raw_content: str
     tags: list[str]
     status: str
     created_at: str
@@ -173,7 +174,6 @@ def get_ideas(authorization: str = Header(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao obter ideias"
         )
-    # Safety: ensure each idea has tags key
     for it in ideas:
         if 'tags' not in it or it.get('tags') is None:
             it['tags'] = []
