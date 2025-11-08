@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {createIdea, getIdeas, IdeaDTO, IdeaResponse, Status, updateIdea as apiUpdateIdea, parseStatus, deleteIdea as apiDeleteIdea} from "../requests/idea_reqs";
 import {createJSONStorage, persist } from "zustand/middleware";
 import { toast } from "sonner";
+import { JSONContent } from "@tiptap/react";
 
 interface RecentIdea {
     id?: string;
@@ -9,6 +10,7 @@ interface RecentIdea {
     status: Status;
     ai_classification: string;
     created_at?: string;
+    raw_content?: JSONContent;
     tags?: string[];
 }
 
@@ -69,7 +71,7 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     { ideaCreated: 0, ideaProgress: 0, ideaFinished: 0 }
                 );
 
-                const cleanedResponses: Array<Omit<IdeaResponse, "month">> = response.map(({ month, ...rest }) => ({ ...rest }));
+                const cleanedResponses: Array<Omit<IdeaResponse, "month">> = response.map(({ month, ...rest }) => ({ ...rest, id: rest.id !== undefined && rest.id !== null ? String(rest.id) : undefined }));
 
                 const uniqueMonthNums: number[] = response
                     .map(r => r.month)
@@ -96,7 +98,20 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     .filter(r => !!r.created_at)
                     .sort((a, b) => (new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime()))
                     .slice(0, 3)
-                    .map(r => ({ id: r.id, title: r.title, status: r.status, ai_classification: r.ai_classification, created_at: r.created_at }));
+                    .map(r => {
+                        const idStr = r.id !== undefined && r.id !== null ? String(r.id) : undefined;
+                        if (!idStr) {
+                            console.warn('mapIdeas: recent idea missing id on server response', r);
+                        }
+                        return {
+                            id: idStr,
+                            title: r.title,
+                            status: r.status,
+                            ai_classification: r.ai_classification,
+                            created_at: r.created_at,
+                            raw_content: (r as any).raw_content ?? undefined,
+                        }
+                    });
 
                 console.log('monthLabels:', monthLabels, 'ideaCreatedThisMonth:', ideaCreatedThisMonth, 'recent:', recent)
 
@@ -145,7 +160,7 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                 console.log('updateIdea called with:', idea)
                 try {
                     let res = await apiUpdateIdea(idea)
-                    // if first attempt failed and we have a status number, try with string code
+                    console.log('updateIdea response:', res)
                     if (!res && idea && typeof (idea as any).status === 'number') {
                         const num = (idea as any).status
                         const toCode = num === 1 ? 'ACTIVE' : num === 2 ? 'FINISHED' : 'DRAFT'
@@ -156,37 +171,38 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     if (res) {
                         toast.success("Ideia atualizada com sucesso")
 
-                        // Optimistically update local `responses` using server-returned object
-                        try {
-                            if (res.id) {
-                                const serverStatus = parseStatus(res.status)
-                                set((prev) => {
-                                    const updatedResponses = prev.responses.map(r => {
-                                        if (r.id === res.id) {
-                                            return {
-                                                ...r,
-                                                title: res.title ?? r.title,
-                                                tags: Array.isArray(res.tags) ? res.tags : r.tags,
-                                                status: serverStatus ?? r.status,
-                                            }
+                        // Update local store with the response
+                        if (res.id) {
+                            const serverStatus = parseStatus(res.status)
+                            set((prev) => {
+                                const updatedResponses = prev.responses.map(r => {
+                                    if (String(r.id) === String(res.id)) {
+                                        return {
+                                            ...r,
+                                            title: res.title ?? r.title,
+                                            tags: Array.isArray(res.tags) ? res.tags : r.tags,
+                                            status: serverStatus ?? r.status,
+                                            raw_content: (res as any).raw_content ?? r.raw_content,
                                         }
-                                        return r
-                                    })
-                                    return { ...prev, responses: updatedResponses }
+                                    }
+                                    return r
                                 })
-                            }
-                        } catch (err) {
-                            console.warn('failed to optimistically update responses', err)
-                        }
 
-                        // Also refresh mapped data to ensure aggregate counters are correct
-                        try {
-                            const state = get()
-                            if (state && typeof state.mapIdeas === 'function') {
-                                await state.mapIdeas()
-                            }
-                        } catch (err) {
-                            console.warn('mapIdeas failed after updateIdea', err)
+                                const updatedRecent = prev.recentIdeas.map(rr => {
+                                    if (String(rr.id) === String(res.id)) {
+                                        return {
+                                            ...rr,
+                                            title: res.title ?? rr.title,
+                                            status: serverStatus ?? rr.status,
+                                            ai_classification: res.ai_classification ?? rr.ai_classification,
+                                            raw_content: (res as any).raw_content ?? rr.raw_content,
+                                        }
+                                    }
+                                    return rr
+                                })
+
+                                return { ...prev, responses: updatedResponses, recentIdeas: updatedRecent }
+                            })
                         }
 
                         return true

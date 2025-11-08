@@ -27,9 +27,8 @@ export default function RootLayout({
 }>) {
     const mapIdeas = useIdeaStore.getState().mapIdeas
     const mapRoadmaps = useRoadmapStore.getState().mapRoadmaps
-
-    mapIdeas()
     mapRoadmaps()
+    mapIdeas()
   return (
     <html lang="en">
       <body

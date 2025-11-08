@@ -45,10 +45,6 @@ export default function IdeiasPage() {
         return new Date(date).toLocaleDateString("pt-BR", options);
     }
 
-    const truncate = (text?: string, len = 120) => {
-        if (!text) return ""
-        return text.length > len ? text.slice(0, len).trim() + "..." : text
-    }
 
     const len = filteredIdeas.length
     return (
@@ -121,8 +117,6 @@ export default function IdeiasPage() {
                                 </CardHeader>
 
                                 <CardContent className="flex flex-col gap-3">
-                                    <p className="text-sm text-muted-foreground">{truncate(idea.raw_content, 180)}</p>
-
                                     <div className="flex flex-wrap gap-2">
                                         {idea.tags && idea.tags.length > 0 ? (
                                             idea.tags.map((tag) => (
@@ -142,7 +136,7 @@ export default function IdeiasPage() {
                                 <CardFooter className="flex items-center justify-between">
                                      <div className="flex items-center gap-2">
                                          <EditIdea idea={idea} triggerLabel={"Editar"} />
-                                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); /* open details */ }}>
+                                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); window.location.href = `/ideas/${idea.id}`; }}>
                                              Ver
                                          </Button>
                                      </div>

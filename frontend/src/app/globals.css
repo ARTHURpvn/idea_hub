@@ -118,3 +118,68 @@
         @apply w-full;
     }
 }
+
+/* 🎨 Editor Enhancements - Smooth animations and transitions */
+@layer utilities {
+    /* Smooth scroll behavior */
+    .simple-editor-content {
+        scroll-behavior: smooth;
+    }
+
+    /* Beautiful focus rings for interactive elements in editor */
+    .tiptap-toolbar button:focus-visible,
+    .tiptap-toolbar [role="button"]:focus-visible {
+        @apply outline-2 outline-offset-2 outline-primary/50;
+    }
+
+    /* Enhance button hover states in toolbar */
+    .tiptap-toolbar button:hover,
+    .tiptap-toolbar [role="button"]:hover {
+        @apply bg-accent/50 transition-colors duration-200;
+    }
+}
+
+/* 🌟 Custom animations for editor elements */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* Apply subtle entrance animation to editor */
+.simple-editor-wrapper {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Smooth color transitions for theme switching */
+* {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Remove transitions for motion-reduced preferences */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+

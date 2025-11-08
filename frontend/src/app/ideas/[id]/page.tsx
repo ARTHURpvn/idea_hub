@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { JSONContent } from "@tiptap/react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet"
-import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { MessageCircle, Loader2, Send, Sparkles } from "lucide-react"
@@ -12,7 +12,8 @@ import { motion, AnimatePresence } from "framer-motion"
 
 // SimpleEditor (inline mode when embutido)
 import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor"
-import { getIdeaById, updateIdea } from "@/requests/idea_reqs"
+import { useIdeaStore } from "@/store/idea_store"
+import { getIdeaById } from "@/requests/idea_reqs"
 
 interface Message {
     id: number
@@ -30,30 +31,57 @@ export default function IdeaNotesPage() {
     const [loading, setLoading] = useState(false)
 
     // Editor Tiptap
-    const [ideaContent, setIdeaContent] = useState<string | undefined>(undefined)
+    const [ideaContent, setIdeaContent] = useState<string | JSONContent | undefined>(undefined)
     const [ideaLoading, setIdeaLoading] = useState(false)
     const params = useParams()
+    // normalize id from params (handle string | string[])
     const ideaId = Array.isArray(params?.id) ? params?.id[0] ?? "" : (params?.id ?? "")
+    const idea_id = String(ideaId || "")
 
+    // attempt to find idea first in recentIdeas (fast), then in full responses
+    const recent = useIdeaStore((state) => state.recentIdeas) || []
+    const responses = useIdeaStore((state) => state.responses) || []
+    // comparison normalized to string to avoid number vs string mismatch
+    const idea = recent.find((i) => String(i.id) === idea_id) || responses.find((r) => String(r.id) === idea_id)
+
+    // Load idea content on mount or when idea_id changes
     useEffect(() => {
-        // fetch idea initial content when component mounts
+        let mounted = true
         const load = async () => {
-            if (!ideaId) return
-            setIdeaLoading(true)
-            const res = await getIdeaById(ideaId)
-            if (res) {
-                setIdeaContent(res.raw_content ?? "")
+            if (!idea_id) {
+                setIdeaLoading(false)
+                return
             }
-            setIdeaLoading(false)
+
+            setIdeaLoading(true)
+
+            // Try to get from store first
+            const storeIdea = recent.find((i) => String(i.id) === idea_id) || responses.find((r) => String(r.id) === idea_id)
+            if (storeIdea && (storeIdea as any).raw_content !== undefined) {
+                if (mounted) {
+                    console.log('[page] setting ideaContent from store:', (storeIdea as any).raw_content);
+                    setIdeaContent((storeIdea as any).raw_content as string | JSONContent)
+                    setIdeaLoading(false)
+                }
+                return
+            }
+
+            // Otherwise fetch from server
+            try {
+                const server = await getIdeaById(idea_id)
+                if (mounted && server) {
+                    console.log('[page] setting ideaContent from server:', server.raw_content);
+                    setIdeaContent(server.raw_content ?? "")
+                }
+            } catch (err) {
+                console.warn('failed to fetch idea by id', err)
+            } finally {
+                if (mounted) setIdeaLoading(false)
+            }
         }
         load()
-    }, [ideaId])
-
-    const handleAutoSave = async (content: string) => {
-        if (!ideaId) return
-        // call API to update raw_content
-        await updateIdea({ id: ideaId, raw_content: content })
-    }
+        return () => { mounted = false }
+    }, [idea_id])
 
     const handleSend = async () => {
         if (!input.trim()) return
@@ -75,24 +103,14 @@ export default function IdeaNotesPage() {
     }
 
     return (
-        <div className="relative max-w-7xl mx-auto p-6">
+        <div className="relative w-full max-w-7xl mx-auto my-6 p-4 bg-card rounded-lg h-[93dvh] overflow-hidden">
             {/* Editor */}
-            <Card className="p-6 w-full mx-auto shadow-lg bg-gradient-to-br from-background/30 to-background/80">
-                <div className="rounded-md border p-6 bg-card">
-                    {ideaLoading ? (
-                        <div className="flex items-center justify-center p-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                            <div className="ml-3 text-sm text-muted-foreground">Carregando...</div>
-                        </div>
-                    ) : (
-                        <SimpleEditor
-                            fullScreen={false}
-                            initialContent={ideaContent}
-                            onAutoSave={handleAutoSave}
-                        />
-                    )}
-                </div>
-            </Card>
+            <div className="w-full">
+                <SimpleEditor
+                    idea_id={idea_id}
+                    annotation={ideaContent}
+                />
+            </div>
 
             {/* Botão flutuante de chat (abre Sheet lateral) */}
             <motion.div

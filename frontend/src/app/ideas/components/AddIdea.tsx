@@ -42,7 +42,7 @@ const AddIdea = ({variant}: {variant: "default" | "secondary"}) => {
     const [tags, setTags] = useState<string[]>([])
     const [loading, setLoading] = useState<boolean>(false)
 
-    const createIdea = useIdeaStore.getState().createIdea
+    const createIdea = useIdeaStore((state) => state.createIdea)
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

@@ -11,6 +11,7 @@ import {
 import {Button} from "./ui/button"
 import {Tooltip, TooltipTrigger, TooltipContent} from '@/components/ui/tooltip'
 import {LayoutDashboardIcon, LightbulbIcon, LogOutIcon, PanelLeft, SettingsIcon, UserIcon} from "lucide-react"
+import Image from "next/image"
 import {useAuthStore} from "@/store/auth_store"
 import {cn} from "@/lib/utils"
 import { usePathname } from "next/navigation";
@@ -49,13 +50,17 @@ export default function AppSidebar() {
             <SidebarHeader className={"relative h-16 border-b border-border overflow-visible"}>
                 <div
                     className="absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center">
-                    <img
-                        src={open ? `./ideahub_logo.png` : "./ideahub_icon.png"}
+                    <Image
+                        src={open ? "/ideahub_logo.png" : "/ideahub_icon.png"}
                         alt={"ideahub icon"}
+                        // width/height ajustados dinamicamente para manter proporção; as classes Tailwind continuam aplicando transições
+                        width={open ? 240 : 64}
+                        height={48}
                         className={cn(
                             "object-contain transition-[width,opacity,transform] duration-150 ease-in-out",
                             open ? "w-full" : "w-16"
                         )}
+                        priority
                     />
                 </div>
                 <div

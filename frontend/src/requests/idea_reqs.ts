@@ -1,3 +1,4 @@
+import { JSONContent } from "@tiptap/react";
 import axios from "axios"
 import { getCookie } from "cookies-next"
 
@@ -12,7 +13,7 @@ export interface IdeaResponse {
     title: string;
     status: Status;
     ai_classification: string;
-    raw_content?: string;
+    raw_content?: string | JSONContent;
     month?: number;
     created_at?: string;
     tags?: string[];
@@ -28,7 +29,7 @@ export interface IdeaDTO {
     title?: string;
     status?: string | number;
     ai_classification?: string;
-    raw_content?: string;
+    raw_content?: JSONContent;
     created_at?: string;
     tags?: string[];
 }
@@ -116,13 +117,27 @@ export const getIdeas = async (): Promise<IdeaResponse[]> => {
 
         console.log(raw)
 
+        const safeParse = (val: any): string | JSONContent => {
+            if (val === null || val === undefined) return "";
+            if (typeof val !== 'string') return val as JSONContent;
+            const s = val.trim();
+            if ((s.startsWith('{') || s.startsWith('['))) {
+                try {
+                    return JSON.parse(s);
+                } catch (_e) {
+                    return val;
+                }
+            }
+            return val;
+        }
+
         const mapped: IdeaResponse[] = raw.map((idea) => ({
             id: idea.id ?? undefined,
             title: idea.title ?? "(sem título)",
             status: parseStatus(idea.status),
             ai_classification: idea.ai_classification ?? "",
-            // prefer raw_content, fallback to description or empty string
-            raw_content: idea.raw_content ?? idea.description ?? "",
+            // prefer raw_content, fallback to description or empty string; try parse JSON if possible
+            raw_content: safeParse(idea.raw_content ?? idea.description ?? ""),
             // tags may come from backend as array
             tags: Array.isArray(idea.tags) ? idea.tags : (idea.tags ? String(idea.tags).split(",").map((s: string) => s.trim()).filter(Boolean) : []),
             month: idea.created_at ? new Date(idea.created_at).getMonth() + 1 : undefined,
@@ -155,13 +170,48 @@ export const getIdeaById = async (id: string): Promise<IdeaResponse | null> => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        const raw: IdeaResponse = res.data;
+        const raw: any = res.data;
+        console.log("getIdeaById: raw response: ", raw)
+        console.log(raw)
 
         if (!raw) {
             console.warn("getIdeaById: unexpected response format, expected object", raw);
             return null;
         }
-        return raw
+
+        // try parse raw_content if it's a JSON string
+        let parsedContent: string | JSONContent | undefined = undefined;
+        const candidate = raw.raw_content ?? undefined;
+
+        if (candidate !== undefined && candidate !== null) {
+            if (typeof candidate === 'string') {
+                const s = candidate.trim();
+                if (s.startsWith('{') || s.startsWith('[')) {
+                    try {
+                        parsedContent = JSON.parse(s);
+                    } catch (_e) {
+                        parsedContent = candidate;
+                    }
+                } else {
+                    parsedContent = candidate;
+                }
+            } else {
+                parsedContent = candidate as JSONContent;
+            }
+        }
+
+        const mapped: IdeaResponse = {
+            id: raw.id ?? undefined,
+            title: raw.title ?? "(sem título)",
+            status: parseStatus(raw.status),
+            ai_classification: raw.ai_classification ?? "",
+            raw_content: parsedContent,
+            tags: Array.isArray(raw.tags) ? raw.tags : (raw.tags ? String(raw.tags).split(",").map((s: string) => s.trim()).filter(Boolean) : []),
+            month: raw.created_at ? new Date(raw.created_at).getMonth() + 1 : undefined,
+            created_at: raw.created_at ?? undefined,
+        }
+
+        return mapped
 
     } catch (error: any) {
         console.error(error)
@@ -185,7 +235,18 @@ export const updateIdea = async (idea: Partial<IdeaDTO>) => {
 
     const doPatch = async (payload: Partial<IdeaDTO>) => {
         // normalize status to english code strings before sending to avoid numeric 0 being interpreted incorrectly
-        const sendPayload = { ...payload }
+        const sendPayload: any = { ...payload }
+        // backend expects `content` field (string) for raw content updates
+        if (sendPayload.raw_content !== undefined) {
+            try {
+                // If it's an object (JSONContent), stringify it; if already a string, leave it
+                sendPayload.content = typeof sendPayload.raw_content === 'string' ? sendPayload.raw_content : JSON.stringify(sendPayload.raw_content)
+            } catch (e) {
+                // fallback: convert to string via String()
+                sendPayload.content = String(sendPayload.raw_content)
+            }
+            delete sendPayload.raw_content
+        }
         if (sendPayload.status !== undefined) {
             const s = sendPayload.status
             if (typeof s === 'number' || (typeof s === 'string' && /^\d+$/.test(String(s)))) {
@@ -213,11 +274,13 @@ export const updateIdea = async (idea: Partial<IdeaDTO>) => {
         try {
             const res = await doPatch(idea)
             if (res && res.data) return res.data
+            // fallback: return shape similar to server, include raw_content if we sent it
             return {
                 id: idea.id,
                 title: idea.title,
                 status: idea.status,
                 tags: idea.tags ?? [],
+                raw_content: idea.raw_content ?? undefined,
             }
         } catch (error: any) {
             // if server rejected the payload (validation error 422), try alternate status format
@@ -240,34 +303,44 @@ export const updateIdea = async (idea: Partial<IdeaDTO>) => {
                     }
 
                     const altPayload = { ...idea, status: altStatus }
-                    const retryRes = await doPatch(altPayload)
-                    if (retryRes && retryRes.data) return retryRes.data
-                    return {
-                        id: idea.id,
-                        title: idea.title,
-                        status: altStatus,
-                        tags: idea.tags ?? [],
+                    // also map raw_content to content in retry
+                    if ((altPayload as any).raw_content !== undefined) {
+                        try {
+                            (altPayload as any).content = typeof (altPayload as any).raw_content === 'string' ? (altPayload as any).raw_content : JSON.stringify((altPayload as any).raw_content)
+                        } catch (e) {
+                            (altPayload as any).content = String((altPayload as any).raw_content)
+                        }
+                        delete (altPayload as any).raw_content
                     }
-                } catch (err2: any) {
-                    console.error('updateIdea retry failed', err2)
-                    return null
-                }
-            }
+                     const retryRes = await doPatch(altPayload)
+                     if (retryRes && retryRes.data) return retryRes.data
+                     return {
+                         id: idea.id,
+                         title: idea.title,
+                         status: altStatus,
+                         tags: idea.tags ?? [],
+                         raw_content: idea.raw_content ?? undefined,
+                     }
+                 } catch (err2: any) {
+                     console.error('updateIdea retry failed', err2)
+                     return null
+                 }
+             }
 
-            // otherwise rethrow so outer catch handles logging
-            throw error
-        }
-    } catch (error: any) {
-        console.error(error)
-        if (error?.response) {
-            console.error("updateIdea: server responded with", error.response.status, error.response.data);
-        } else if (error?.request) {
-            console.error("updateIdea: no response received", error.message);
-        } else {
-            console.error("updateIdea:", error?.message ?? error);
-        }
-        return null;
-    }
+             // otherwise rethrow so outer catch handles logging
+             throw error
+         }
+     } catch (error: any) {
+         console.error(error)
+         if (error?.response) {
+             console.error("updateIdea: server responded with", error.response.status, error.response.data);
+         } else if (error?.request) {
+             console.error("updateIdea: no response received", error.message);
+         } else {
+             console.error("updateIdea:", error?.message ?? error);
+         }
+         return null;
+     }
 }
 
 export const deleteIdea = async (id: string) => {

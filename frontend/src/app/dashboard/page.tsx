@@ -28,6 +28,7 @@ import { Status } from "@/requests/idea_reqs";
 import { useRoadmapStore } from "@/store/roadmap_store";
 import MetricCard from "./components/MetricCards";
 import AddIdea from "../ideas/components/AddIdea";
+import Link from "next/link";
 
 const fallbackData = [
     { name: "Jun", ideias: 2 },
@@ -39,7 +40,7 @@ const fallbackData = [
 
 export default function Dashboard() {
     const mapIdeas = useIdeaStore((state) => state.mapIdeas);
-    const mapRoadmaps = useRoadmapStore.getState().mapRoadmaps
+    const mapRoadmaps = useRoadmapStore((state) => state.mapRoadmaps)
 
     const name = useAuthStore((state) => state.name) || "User Name";
     const months = useIdeaStore((state) => state.months) || [];
@@ -47,10 +48,10 @@ export default function Dashboard() {
     const recentIdeas = useIdeaStore((state) => state.recentIdeas) || [];
 
     useEffect(() => {
-        mapIdeas().catch((err) => console.error("Failed to map responses:", err));
+        mapIdeas && typeof mapIdeas === 'function' && mapIdeas().catch((err: any) => console.error("Failed to map responses:", err));
     }, [mapIdeas]);
     useEffect(() => {
-        mapRoadmaps().catch((err) => console.error("Failed to map responses:", err));
+        mapRoadmaps && typeof mapRoadmaps === 'function' && mapRoadmaps().catch((err: any) => console.error("Failed to map responses:", err));
     }, [mapRoadmaps]);
 
     // prepare chart data aligning months -> monthlyCounts
@@ -187,9 +188,18 @@ export default function Dashboard() {
                                             {String(idea.status)}
                                         </p>
                                     </div>
-                                    <Button size="sm" variant="outline">
-                                        Abrir
-                                    </Button>
+                                    {idea.id ? (
+                                        <Button size="sm" variant="outline" asChild>
+                                            <Link href={`/ideas/${idea.id}`}>
+                                                Abrir
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        // se não houver ID, renderiza botão desabilitado e loga para debug
+                                        <Button size="sm" variant="outline" disabled onClick={() => console.warn('dashboard: missing id for recent idea', idea)}>
+                                            Sem ID
+                                        </Button>
+                                    )}
                                 </div>
                             ))}
                         </div>

@@ -69,8 +69,8 @@ const EditIdea = ({
 
     const [status, setStatus] = useState<string>(normalizeStatusToCode(idea.status))
 
-    const updateIdea = useIdeaStore.getState().updateIdea
-    const deleteIdea = useIdeaStore.getState().deleteIdea
+    const updateIdea = useIdeaStore((state) => state.updateIdea)
+    const deleteIdea = useIdeaStore((state) => state.deleteIdea)
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
