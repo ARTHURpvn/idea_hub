@@ -53,7 +53,6 @@ export default function AppSidebar() {
                     <Image
                         src={open ? "/ideahub_logo.png" : "/ideahub_icon.png"}
                         alt={"ideahub icon"}
-                        // width/height ajustados dinamicamente para manter proporção; as classes Tailwind continuam aplicando transições
                         width={open ? 240 : 64}
                         height={48}
                         className={cn(
@@ -104,7 +103,7 @@ export default function AppSidebar() {
                             className={cn(
                                 "group relative w-full py-3 flex flex-row gap-3 items-center box-border px-2",
                                 open ? "justify-start" : "justify-center",
-                                route === action.href && "text-primary"
+                                route.startsWith(action.href) && "text-primary"
                             )}
                             asChild
                         >
@@ -117,7 +116,7 @@ export default function AppSidebar() {
                                             : "absolute left-1/2 -translate-x-1/2 w-10 flex items-center justify-center z-10"
                                     )}
                                 >
-                                    <action.Icon strokeWidth={2} className={cn("size-5 transition-all duration-300")}/>
+                                    <action.Icon strokeWidth={2} className={cn("size-5 transition-all duration-150")}/>
                                 </span>
                                 <span
                                     className={cn(
