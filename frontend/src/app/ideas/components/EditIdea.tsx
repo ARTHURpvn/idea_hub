@@ -41,12 +41,15 @@ const formSchema = z.object({
 })
 
 const EditIdea = ({
-    idea,
+    idea_id,
     triggerLabel = "Editar",
 }: {
-    idea: { id?: string; title: string; tags?: string[]; status?: import("@/requests/idea_reqs").Status },
+    idea_id: string,
     triggerLabel?: string,
 }) => {
+    const ideas = useIdeaStore((state) => state.responses)
+    const idea = ideas.filter(i => i.id === idea_id)[0]
+
     const [open, setOpen] = useState<boolean>(false)
     const [tags, setTags] = useState<string[]>(idea.tags ?? [])
     const [loading, setLoading] = useState<boolean>(false)
@@ -245,7 +248,7 @@ const EditIdea = ({
                                         try {
                                             const success = await deleteIdea(idea.id)
                                             if (success) {
-                                                // store shows toast; close modal
+                                                window.location.href = "/ideas"
                                                 setOpen(false)
                                             }
                                         } catch (err) {

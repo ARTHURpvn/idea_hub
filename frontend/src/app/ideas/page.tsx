@@ -135,7 +135,7 @@ export default function IdeiasPage() {
 
                                 <CardFooter className="flex items-center justify-between">
                                      <div className="flex items-center gap-2">
-                                         <EditIdea idea={idea} triggerLabel={"Editar"} />
+                                         <EditIdea idea_id={idea.id!} triggerLabel={"Editar"} />
                                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); window.location.href = `/ideas/${idea.id}`; }}>
                                              Ver
                                          </Button>
