@@ -280,6 +280,10 @@ def edit_idea_content(idea_id: str, content: str) -> bool:
     Edit the content of an existing idea. This function allows updating the text content
     associated with a specific idea, identified by its unique identifier.
 
+    If the idea's `raw_content` was previously empty or null and the new `content` is
+    non-empty, the idea's `status` will be set to 'ACTIVE'. The `updated_at` column
+    is always touched.
+
     :param idea_id: The unique identifier of the idea to be edited.
     :type idea_id: str
     :param content: The new content to replace the existing idea's content.
@@ -294,8 +298,29 @@ def edit_idea_content(idea_id: str, content: str) -> bool:
         return False
 
     try:
-        # update raw_content and set updated_at to current timestamp
-        cur.execute("UPDATE ideas SET raw_content = %s, updated_at = NOW() WHERE id = %s", (content, idea_id))
+        # Primeiro, obter o raw_content atual para decidir se devemos marcar como ACTIVE
+        cur.execute("SELECT raw_content FROM ideas WHERE id = %s", (idea_id,))
+        row = cur.fetchone()
+        current_raw = None
+        if row:
+            current_raw = row[0]
+
+        new_has_content = (content is not None) and (str(content).strip() != "")
+        current_has_content = (current_raw is not None) and (str(current_raw).strip() != "")
+
+        if not current_has_content and new_has_content:
+            # Primeiro preenchimento do raw_content -> set status to ACTIVE
+            cur.execute(
+                "UPDATE ideas SET raw_content = %s, status = %s, updated_at = NOW() WHERE id = %s",
+                (content, 'ACTIVE', idea_id)
+            )
+        else:
+            # Apenas atualiza o conteúdo e o timestamp
+            cur.execute(
+                "UPDATE ideas SET raw_content = %s, updated_at = NOW() WHERE id = %s",
+                (content, idea_id)
+            )
+
         conn.commit()
         create_idea_version(idea_id, content)
         return True

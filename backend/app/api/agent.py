@@ -157,3 +157,23 @@ def get_chat_by_id(chat_id: str):
     except Exception as e:
         print(f"Erro ao pegar chat: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao obter chat")
+
+
+@router.delete("/{chat_id}", status_code=200, tags=["Chat"])
+def delete_chat(chat_id: str, authorization: str = Header(...)):
+    from ..database.querys.chat_query import delete_chat as delete_chat_from_db
+
+    token = authorization.replace("Bearer ", "").strip()
+    user_id = check_token(token)
+
+    try:
+        success = delete_chat_from_db(chat_id, user_id)
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat não encontrado ou não autorizado")
+        return {"success": True, "message": "Chat deletado com sucesso"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao deletar chat: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao deletar chat")
+

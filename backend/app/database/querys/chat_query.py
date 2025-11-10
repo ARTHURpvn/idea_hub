@@ -165,11 +165,11 @@ def get_all_chats(user_id: str):
         # Seleciona colunas explicitamente e usa parâmetro para evitar SQL injection
         cur.execute(
             """
-            SELECT ai_chats.id, ai_chats.idea_id, ai_messages.id, ai_messages.message, ai_messages.sender 
+            SELECT ai_chats.id, ai_chats.idea_id, ai_messages.id, ai_messages.message, ai_messages.sender, ai_messages.created_at 
             FROM ai_chats 
             INNER JOIN ai_messages ON ai_chats.id = ai_messages.chat_id 
             WHERE ai_chats.user_id = %s 
-            ORDER BY ai_chats.id DESC, ai_messages.id ASC
+            ORDER BY ai_chats.id DESC, ai_messages.created_at ASC
             """,
             (user_id,)
         )
@@ -189,6 +189,7 @@ def get_all_chats(user_id: str):
             message_id = str(row[2])
             message = row[3]
             sender = row[4]
+            created_at = row[5]
 
 
             # Se mudou de chat, salva o chat anterior
@@ -208,7 +209,8 @@ def get_all_chats(user_id: str):
             current_messages.append({
                 "message_id": message_id,
                 "message": message,
-                "sender": sender
+                "sender": sender,
+                "created_at": created_at.isoformat() if hasattr(created_at, 'isoformat') else str(created_at)
             })
 
             print(f"current_chat_id: {current_chat_id}")
@@ -261,7 +263,7 @@ def get_chat(chat_id: str):
     try:
         # Seleciona colunas explicitamente e usa parâmetro para evitar SQL injection
         cur.execute(
-            "SELECT ai_chats.id, ai_chats.user_id, ai_chats.idea_id, ai_messages.message, ai_messages.sender "
+            "SELECT ai_chats.id, ai_chats.user_id, ai_chats.idea_id, ai_messages.message, ai_messages.sender, ai_messages.created_at "
             "FROM ai_chats "
             "INNER JOIN ai_messages ON ai_chats.id = ai_messages.chat_id "
             "WHERE ai_chats.id = %s "
@@ -276,7 +278,8 @@ def get_chat(chat_id: str):
                 "user_id": str(row[1]),
                 "idea_id": str(row[2]) if row[2] is not None else None,
                 "message": row[3],
-                "sender": row[4]
+                "sender": row[4],
+                "created_at": row[5].isoformat() if hasattr(row[5], 'isoformat') else str(row[5])
             })
         return chats
 
@@ -315,6 +318,55 @@ def get_last_ai_message(chat_id: str) -> str | None:
     except Exception as e:
         print(f"Erro ao pegar ultima mensagem AI: {e}")
         return None
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Erro ao fechar conexao: {e}")
+
+
+def delete_chat(chat_id: str, user_id: str) -> bool:
+    """
+    Deletes a chat and all its associated messages from the database.
+    Only allows deletion if the chat belongs to the specified user.
+
+    :param chat_id: ID of the chat to delete
+    :param user_id: ID of the user requesting the deletion
+    :return: True if deletion was successful, False otherwise
+    """
+    try:
+        conn, cur = get_db_conn(db_name)
+    except Exception as e:
+        print(f"Erro de conexao ao deletar chat: {e}")
+        return False
+
+    try:
+        # First verify that the chat belongs to the user
+        cur.execute("SELECT id FROM ai_chats WHERE id = %s AND user_id = %s", (chat_id, user_id))
+        chat = cur.fetchone()
+
+        if not chat:
+            print(f"Chat {chat_id} nao encontrado ou nao pertence ao usuario {user_id}")
+            return False
+
+        # Delete messages first (due to foreign key constraint)
+        cur.execute("DELETE FROM ai_messages WHERE chat_id = %s", (chat_id,))
+
+        # Then delete the chat
+        cur.execute("DELETE FROM ai_chats WHERE id = %s", (chat_id,))
+
+        conn.commit()
+        print(f"Chat {chat_id} deletado com sucesso")
+        return True
+
+    except Exception as e:
+        print(f"Erro ao deletar chat: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return False
     finally:
         try:
             cur.close()
