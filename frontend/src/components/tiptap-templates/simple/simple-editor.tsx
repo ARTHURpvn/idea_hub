@@ -281,7 +281,6 @@ export function SimpleEditor({idea_id, annotation}: Props) {
         ],
     });
 
-    // Keep editor content in sync with external `annotation` prop
     useEffect(() => {
         if (!editor) return;
         if (!annotation) return;

@@ -142,12 +142,12 @@ export default function IdeaNotesPage() {
 
 
     return (
-        <div className="relative w-full max-w-7xl mx-auto my-6 p-6 space-y-6">
+        <div className="relative w-full max-w-7xl mx-auto px-6 py-4 flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
             {/* Header with Title, Status, and Actions */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-xl p-6 shadow-lg border border-border"
+                className="bg-card rounded-xl p-6 shadow-lg border border-border flex-shrink-0 mb-4"
             >
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex-1 min-w-0">
@@ -192,7 +192,7 @@ export default function IdeaNotesPage() {
 
                     <div className="flex gap-2 flex-wrap">
 
-                        <EditIdea idea_id={idea?.id!} />
+                        {idea && <EditIdea idea_id={idea.id!} />}
 
                         <Button
                             variant="outline"
@@ -213,7 +213,8 @@ export default function IdeaNotesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-card rounded-xl shadow-lg border border-border overflow-hidden h-[70dvh]"
+                className="bg-card rounded-xl shadow-lg border border-border flex-1"
+                style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 120px)' }}
             >
                 <SimpleEditor
                     idea_id={idea_id}
@@ -239,7 +240,7 @@ export default function IdeaNotesPage() {
 
             {/* Roadmap Dialog */}
             <Dialog open={isRoadmapDialogOpen} onOpenChange={setIsRoadmapDialogOpen}>
-                <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
+                <DialogContent className="sm:max-w-[700px] max-h-[75vh]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Map className="w-5 h-5" />
@@ -345,7 +346,8 @@ export default function IdeaNotesPage() {
             </Dialog>
 
             {/* Sheet lateral de chat */}
-            <AIChat open={isChatOpen} setOpen={setIsChatOpen}/>
+            <AIChat open={isChatOpen} setOpen={setIsChatOpen} idea_id={idea_id}/>
+
         </div>
     )
 }

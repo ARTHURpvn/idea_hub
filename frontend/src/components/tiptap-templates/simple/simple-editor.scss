@@ -31,8 +31,10 @@
   padding: 0;
   box-sizing: border-box;
   background: transparent;
-  height: 95vh;
+  height: 100%;
   border: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Inline mode - embedded in a Card */
@@ -43,8 +45,7 @@
   padding: 0;
   box-sizing: border-box;
   background: transparent;
-  overflow: hidden;
-  height: 95vh;
+  height: 100%;
   border: none;
 }
 
@@ -59,8 +60,6 @@
   border-radius: 0;
   box-shadow: none;
   border: none;
-  overflow: auto;
-  flex: 1;
   height: 100%;
   position: relative;
 
@@ -108,17 +107,15 @@
   box-shadow: none;
   border-radius: 0;
   border: none;
-  overflow: auto;
-  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
+  flex: 1;
 }
 
 /* Editor content (ProseMirror) */
 .simple-editor-content .tiptap.ProseMirror.simple-editor {
-  flex: 1;
-  overflow: auto;
   padding: 2rem;
-  min-height: 100%;
   color: var(--tt-theme-text);
   outline: none;
   line-height: 1.7;

@@ -51,7 +51,7 @@ const EditIdea = ({
     const idea = ideas.filter(i => i.id === idea_id)[0]
 
     const [open, setOpen] = useState<boolean>(false)
-    const [tags, setTags] = useState<string[]>(idea.tags ?? [])
+    const [tags, setTags] = useState<string[]>(idea?.tags ?? [])
     const [loading, setLoading] = useState<boolean>(false)
     const mapEnumToCode = (s?: import("@/requests/idea_reqs").Status) => {
         if (s === Status.ACTIVE) return "ACTIVE"
@@ -70,7 +70,7 @@ const EditIdea = ({
         }
     }
 
-    const [status, setStatus] = useState<string>(normalizeStatusToCode(idea.status))
+    const [status, setStatus] = useState<string>(normalizeStatusToCode(idea?.status))
 
     const updateIdea = useIdeaStore((state) => state.updateIdea)
     const deleteIdea = useIdeaStore((state) => state.deleteIdea)
@@ -78,14 +78,15 @@ const EditIdea = ({
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            ideaName: idea.title ?? "",
+            ideaName: idea?.title ?? "",
             tagInput: "",
-            status: String(idea.status ?? ""),
+            status: String(idea?.status ?? ""),
         },
     })
 
     // when opening, ensure form shows latest idea values
     useEffect(() => {
+        if (!idea) return
         form.setValue("ideaName", idea.title ?? "")
         const code = normalizeStatusToCode(idea.status)
         form.setValue("status", code)
@@ -138,6 +139,11 @@ const EditIdea = ({
 
     const removeTag = (tagToRemove: string) => {
         setTags((prev) => prev.filter((t) => t !== tagToRemove))
+    }
+
+    // Se a ideia não foi carregada ainda, não renderiza o componente
+    if (!idea) {
+        return null
     }
 
     return (
