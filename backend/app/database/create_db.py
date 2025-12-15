@@ -6,9 +6,9 @@ from psycopg2 import sql
 
 load_dotenv()
 
-user = os.getenv("POSTGRES_USER", "postgres")
+user = os.getenv("POSTGRES_USER", "idea_forge_user")
 password = os.getenv("POSTGRES_PASSWORD", "postgres")
-host = os.getenv("POSTGRES_HOST", "localhost")
+host = os.getenv("POSTGRES_HOST", "dpg-d4vn288gjchc73cvov4g-a")
 port = os.getenv("POSTGRES_PORT", "5432")
 db_name = os.getenv("POSTGRES_DB", "idea_forge")
 

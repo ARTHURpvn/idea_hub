@@ -298,7 +298,6 @@ def edit_idea_content(idea_id: str, content: str) -> bool:
         return False
 
     try:
-        # Primeiro, obter o raw_content atual para decidir se devemos marcar como ACTIVE
         cur.execute("SELECT raw_content FROM ideas WHERE id = %s", (idea_id,))
         row = cur.fetchone()
         current_raw = None

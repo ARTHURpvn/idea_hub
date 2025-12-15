@@ -4,6 +4,8 @@ from guardrails.runtime import load_config_bundle, instantiate_guardrails, run_g
 from pydantic import BaseModel
 from agents import RunContextWrapper, Agent, ModelSettings, Runner, RunConfig, trace
 from openai.types.shared.reasoning import Reasoning
+import logging
+from typing import List, cast
 
 from ..idea import get_idea_by_id
 
@@ -13,9 +15,15 @@ ctx = SimpleNamespace(guardrail_llm=client)
 # Guardrails definitions
 guardrails_config = {
   "guardrails": [
-
   ]
 }
+# Instantiate guardrails once at module load to avoid repeated work
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+_guardrails_bundle = load_config_bundle(guardrails_config)
+guardrails_instance = instantiate_guardrails(_guardrails_bundle)
+
 # Guardrails utils
 
 def guardrails_has_tripwire(results):
@@ -108,14 +116,18 @@ analizar_viabilidade = Agent(
 
 
 class EntenderContext:
-  def __init__(self, workflow_input_as_text: str):
+  def __init__(self, workflow_input_as_text: str, idea_context: str = ""):
     self.workflow_input_as_text = workflow_input_as_text
+    self.idea_context = idea_context
 def entender_instructions(run_context: RunContextWrapper[EntenderContext], _agent: Agent[EntenderContext]):
   workflow_input_as_text = run_context.context.workflow_input_as_text
+  # make idea_context explicitly available to the agent instructions if present
+  idea_ctx = getattr(run_context.context, "idea_context", "") or ""
+  context_block = f"\nContexto da ideia (anotações): {idea_ctx}\n" if idea_ctx.strip() else ""
   return f"""Voce precisa entende o que o usuario esta querendo fazer e precisa classificar entre duas coisas exatas: \"criar_ideia\"  | \"tirar_duvida\" |  \"nao_relacionado\".
-Voce vai retornar apenas uma dessas tres frases.
-Voce precisa entender o se ele quer retirar duvida sobre algo relacionado ao projeto ou apenas uma duvida qualquer, quando for uma duvida qualquer voce deve retornar: \"nao_relacionado\"
- {workflow_input_as_text} """
+ Voce vai retornar apenas uma dessas tres frases.
+ Voce precisa entender o se ele quer retirar duvida sobre algo relacionado ao projeto ou apenas uma duvida qualquer, quando for uma duvida qualquer voce deve retornar: \"nao_relacionado\"
+ {workflow_input_as_text}{context_block}"""
 entender = Agent(
   name="Entender",
   instructions=entender_instructions,
@@ -256,6 +268,7 @@ def selecionar_melhores_instructions(run_context: RunContextWrapper[SelecionarMe
   return f"""Função: escolher as funcionalidades mais relevantes, inovadoras e alinhadas ao propósito central da ideia.
 Instrução aprimorada:
 Sua função é selecionar as funcionalidades mais estratégicas com base nas análises técnicas e na visão geral da ideia.
+Voce precisa verificar quantas funcionalidades o usuario pediu para retornar e tentar retornar a mesma quantidade de funcionalidades.
 Critérios de seleção:
 Alinhamento com o objetivo principal da ideia;
 Impacto positivo no usuário;
@@ -278,9 +291,6 @@ selecionar_melhores = Agent(
 )
 
 
-class AvaliarClarezaContext:
-  def __init__(self, input_output_text: str):
-    self.input_output_text = input_output_text
 def avaliar_clareza_instructions1(run_context: RunContextWrapper[AvaliarClarezaContext], _agent: Agent[AvaliarClarezaContext]):
   input_output_text = run_context.context.input_output_text
   return f"""Função: revisar e refinar a resposta, garantindo fluidez, clareza e adequação ao público final.
@@ -315,6 +325,7 @@ class CriarContextoContext:
 def criar_contexto_instructions(run_context: RunContextWrapper[CriarContextoContext], _agent: Agent[CriarContextoContext]):
   idea = getattr(run_context.context, "idea", "") or ""
   context = getattr(run_context.context, "context", "") or ""
+  logger.debug("Funcao criar contexto com o content %s", context)
   return f"""Função: compreender profundamente a ideia: {idea}, analisando as anotacoes do usuario: {context} e gerar um contexto estruturado e completo para servir como base aos demais agentes.
 Instrução aprimorada:
 Sua tarefa é analisar cuidadosamente a ideia enviada pelo usuário e construir um contexto coerente, estruturado e informativo sobre ela.
@@ -354,21 +365,36 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
 
     }
 
+    idea_dict = None
     try:
         if idea_id:
             idea_dict = get_idea_by_id(idea_id)
     except Exception as e:
+        logger.exception("Erro ao buscar idea_id %s: %s", idea_id, e)
         return {"error": str(e)}
 
     if idea_dict is None:
         idea_text = ""
+        # ensure idea_context is always defined to avoid NameError downstream
+        idea_context = ""
     else:
         if isinstance(idea_dict, dict):
             idea_text = idea_dict.get("ai_classification") or idea_dict.get("title")
             idea_context = idea_dict.get("raw_content")
+            logger.debug("Chat recebeu o contexto %s", idea_context)
+
         else:
             idea_text = getattr(idea_dict, "ai_classification", None) or getattr(idea_dict, "title", None) or str(idea_dict)
             idea_context = getattr(idea_dict, "raw_content", None) or ""
+
+    # If an idea_id was provided but there isn't enough context in the idea's annotations,
+    # ask the user to add details in the 'anotações' field (outside the chat).
+    # Threshold is conservative — change the length if you prefer a different cutoff.
+    if idea_id and (not idea_context or len(str(idea_context).strip()) < 20):
+        logger.debug("Insufficient idea_context for idea_id=%s (len=%d)", idea_id, len(str(idea_context or "")))
+        return {
+            "message": "Parece que não há informações suficientes nas anotações desta ideia. Por favor, adicione suas anotações (fora do chat) para que eu possa ajudar melhor."
+        }
 
     workflow = workflow_input.model_dump()
     # iniciar conversation_history com estrutura compatível em runtime; removi a anotação de tipo estrita para evitar warnings
@@ -383,14 +409,37 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
         ]
       }
     ]
+    # If there is idea_context, inject it as a system/context message so agents see it up front
+    try:
+        if idea_context and str(idea_context).strip():
+            conversation_history.insert(0, {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "context",
+                        "text": str(idea_context)
+                    }
+                ]
+            })
+    except NameError:
+        # idea_context may not be defined in some paths; ignore if missing
+        logger.debug("idea_context not available to inject into conversation_history")
+
+    # Log conversation for debugging to verify context is being passed
+    try:
+        logger.debug("Conversation history being sent to Runner: %s", conversation_history)
+    except Exception:
+        pass
     guardrails_inputtext = workflow["input_as_text"]
-    guardrails_result = await run_guardrails(ctx, guardrails_inputtext, "text/plain", instantiate_guardrails(load_config_bundle(guardrails_config)), suppress_tripwire=True)
+    # use the pre-instantiated guardrails instance
+    guardrails_result = await run_guardrails(ctx, guardrails_inputtext, "text/plain", guardrails_instance, suppress_tripwire=True)
     guardrails_hastripwire = guardrails_has_tripwire(guardrails_result)
     guardrails_anonymizedtext = get_guardrail_checked_text(guardrails_result, guardrails_inputtext)
     guardrails_output = (guardrails_hastripwire and build_guardrail_fail_output(guardrails_result or [])) or (guardrails_anonymizedtext or guardrails_inputtext)
     if guardrails_hastripwire:
       return guardrails_output
     else:
+      # Pass context into EntenderContext so the classification agent can use it explicitly
       entender_result_temp = await Runner.run(
         entender,
         input=[
@@ -400,7 +449,7 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           "__trace_source__": "agent-builder",
           "workflow_id": "wf_68f27b81b4d08190923b1ee19c2c5ccb0812928a7e7e468e"
         }),
-        context=EntenderContext(workflow_input_as_text=workflow["input_as_text"])
+        context=EntenderContext(workflow_input_as_text=workflow["input_as_text"], idea_context=str(idea_context) if idea_context else "")
       )
 
       # conversation_history.extend([item.to_input_item() for item in entender_result_temp.new_items])
@@ -429,9 +478,9 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           else:
               normalized_name = ""
 
-          print(f"DEBUG: entender raw_name={raw_name!r}, normalized_name={normalized_name!r}")
+          logger.debug("DEBUG: entender raw_name=%r, normalized_name=%r", raw_name, normalized_name)
       except Exception as e:
-          print(f"DEBUG: erro ao normalizar entender result: {e}")
+          logger.exception("DEBUG: erro ao normalizar entender result: %s", e)
           normalized_name = ""
       # --- end debug ---
 
@@ -448,13 +497,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=CriarContextoContext(input_output_parsed_name=entender_result["output_parsed"].get("name") if isinstance(entender_result.get("output_parsed"), dict) else entender_result.get("output_text"), idea=idea_text, context=idea_context)
         )
-        print("DEBUG: criar_contexto final_output_as=", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: criar_contexto final_output_as=%s", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: criar_contexto final_output_model_dump=", getattr(criar_contexto_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: criar_contexto final_output_model_dump=%s", getattr(criar_contexto_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in criar_contexto_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in criar_contexto_result_temp.new_items])))
 
         criar_contexto_result = {
           "output_text": criar_contexto_result_temp.final_output_as(str)
@@ -470,13 +519,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=VerificarContextoContext(input_output_text=criar_contexto_result["output_text"])
         )
-        print("DEBUG: verificar_contexto final_output_as=", getattr(verificar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: verificar_contexto final_output_as=%s", getattr(verificar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: verificar_contexto final_output_model_dump=", getattr(verificar_contexto_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: verificar_contexto final_output_model_dump=%s", getattr(verificar_contexto_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in verificar_contexto_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in verificar_contexto_result_temp.new_items])))
 
         verificar_contexto_result = {
           "output_text": verificar_contexto_result_temp.final_output_as(str)
@@ -493,7 +542,7 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           context=SolucionarDuvidaContext(input_output_text=verificar_contexto_result["output_text"])
         )
 
-        conversation_history.extend([item.to_input_item() for item in solucionar_duvida_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in solucionar_duvida_result_temp.new_items])))
 
         solucionar_duvida_result = {
           "output_text": solucionar_duvida_result_temp.final_output_as(str)
@@ -510,7 +559,7 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           context=AvaliarClarezaContext(input_output_text=solucionar_duvida_result["output_text"])
         )
 
-        conversation_history.extend([item.to_input_item() for item in avaliar_clareza_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in avaliar_clareza_result_temp.new_items])))
 
         avaliar_clareza_result = {
           "output_text": avaliar_clareza_result_temp.final_output_as(str)
@@ -518,20 +567,20 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
         end_result = {
           "message": avaliar_clareza_result["output_text"]
         }
-        print(f"DEBUG: end_result (tirar_duvida) message_length={len(str(end_result.get('message','')))}")
+        logger.debug("DEBUG: end_result (tirar_duvida) message_length=%d", len(str(end_result.get('message',''))))
         # Proteção: se a mensagem final for apenas a classificação (ex: 'criar ideia'), retorna placeholder
         try:
             final_msg = str(end_result.get("message", "")).strip()
             lower_msg = final_msg.lower()
             raw_name_cmp = (raw_name or "").strip().lower() if 'raw_name' in locals() else ""
             if raw_name_cmp and raw_name_cmp in lower_msg:
-                print(f"DEBUG: final message equals or contains raw classification ({raw_name_cmp}), returning fallback")
+                logger.debug("DEBUG: final message equals or contains raw classification (%s), returning fallback", raw_name_cmp)
                 return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
             if normalized_name and normalized_name.replace("_", " ") in lower_msg:
-                print(f"DEBUG: final message contains normalized classification ({normalized_name}), returning fallback")
+                logger.debug("DEBUG: final message contains normalized classification (%s), returning fallback", normalized_name)
                 return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
         except Exception as e:
-            print(f"DEBUG: error checking final message vs classification: {e}")
+            logger.exception("DEBUG: error checking final message vs classification: %s", e)
         return end_result
       elif normalized_name == "criar_ideia" or normalized_name == "criar_idea" or normalized_name == "criarideia":
         criar_contexto_result_temp = await Runner.run(
@@ -545,13 +594,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=CriarContextoContext(input_output_parsed_name=entender_result["output_parsed"].get("name") if isinstance(entender_result.get("output_parsed"), dict) else entender_result.get("output_text"), idea=idea_text)
         )
-        print("DEBUG: criar_contexto final_output_as=", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: criar_contexto final_output_as=%s", getattr(criar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: criar_contexto final_output_model_dump=", getattr(criar_contexto_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: criar_contexto final_output_model_dump=%s", getattr(criar_contexto_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in criar_contexto_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in criar_contexto_result_temp.new_items])))
 
         criar_contexto_result = {
           "output_text": criar_contexto_result_temp.final_output_as(str)
@@ -567,13 +616,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=VerificarContextoContext(input_output_text=criar_contexto_result["output_text"])
         )
-        print("DEBUG: verificar_contexto final_output_as=", getattr(verificar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: verificar_contexto final_output_as=%s", getattr(verificar_contexto_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: verificar_contexto final_output_model_dump=", getattr(verificar_contexto_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: verificar_contexto final_output_model_dump=%s", getattr(verificar_contexto_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in verificar_contexto_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in verificar_contexto_result_temp.new_items])))
 
         verificar_contexto_result = {
           "output_text": verificar_contexto_result_temp.final_output_as(str)
@@ -589,13 +638,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=CriarFuncContext(input_output_text=verificar_contexto_result["output_text"])
         )
-        print("DEBUG: criar_func final_output_as=", getattr(criar_func_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: criar_func final_output_as=%s", getattr(criar_func_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: criar_func final_output_model_dump=", getattr(criar_func_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: criar_func final_output_model_dump=%s", getattr(criar_func_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in criar_func_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in criar_func_result_temp.new_items])))
 
         criar_func_result = {
           "output_text": criar_func_result_temp.final_output_as(str)
@@ -611,17 +660,20 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=AnalizarViabilidadeContext(input_output_text=criar_func_result["output_text"])
         )
-        print("DEBUG: analizar_viabilidade final_output_as=", getattr(analizar_viabilidade_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: analizar_viabilidade final_output_as=%s", getattr(analizar_viabilidade_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: analizar_viabilidade final_output_model_dump=", getattr(analizar_viabilidade_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: analizar_viabilidade final_output_model_dump=%s", getattr(analizar_viabilidade_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in analizar_viabilidade_result_temp.new_items])
-
+        # assign the analyzed result to a stable variable used later
         analizar_viabilidade_result = {
           "output_text": analizar_viabilidade_result_temp.final_output_as(str)
         }
+
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in analizar_viabilidade_result_temp.new_items])))
+
+        # Run selecionar_melhores agent (was missing) and append its items
         selecionar_melhores_result_temp = await Runner.run(
           selecionar_melhores,
           input=[
@@ -633,13 +685,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=SelecionarMelhoresContext(input_output_text=analizar_viabilidade_result["output_text"])
         )
-        print("DEBUG: selecionar_melhores final_output_as=", getattr(selecionar_melhores_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: selecionar_melhores final_output_as=%s", getattr(selecionar_melhores_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: selecionar_melhores final_output_model_dump=", getattr(selecionar_melhores_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: selecionar_melhores final_output_model_dump=%s", getattr(selecionar_melhores_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in selecionar_melhores_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in selecionar_melhores_result_temp.new_items])))
 
         selecionar_melhores_result = {
           "output_text": selecionar_melhores_result_temp.final_output_as(str)
@@ -655,13 +707,13 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
           }),
           context=AvaliarClarezaContext(input_output_text=selecionar_melhores_result["output_text"])
         )
-        print("DEBUG: avaliar_clareza final_output_as=", getattr(avaliar_clareza_result_temp, 'final_output_as', lambda t: None)(str))
+        logger.debug("DEBUG: avaliar_clareza final_output_as=%s", getattr(avaliar_clareza_result_temp, 'final_output_as', lambda t: None)(str))
         try:
-            print("DEBUG: avaliar_clareza final_output_model_dump=", getattr(avaliar_clareza_result_temp, 'final_output', None).model_dump())
+            logger.debug("DEBUG: avaliar_clareza final_output_model_dump=%s", getattr(avaliar_clareza_result_temp, 'final_output', None).model_dump())
         except Exception:
             pass
 
-        conversation_history.extend([item.to_input_item() for item in avaliar_clareza_result_temp.new_items])
+        conversation_history.extend(cast(List[dict], cast(object, [item.to_input_item() for item in avaliar_clareza_result_temp.new_items])))
 
         avaliar_clareza_result = {
           "output_text": avaliar_clareza_result_temp.final_output_as(str)
@@ -669,10 +721,10 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
         end_result = {
           "message": avaliar_clareza_result["output_text"]
         }
-        print(f"DEBUG: end_result (criar_ideia) message_length={len(str(end_result.get('message','')))}")
+        logger.debug("DEBUG: end_result (criar_ideia) message_length=%d", len(str(end_result.get('message',''))))
         # guard against returning a raw short classification (e.g. 'criar ideia') — ensure message is sufficiently descriptive
         if isinstance(end_result.get("message"), str) and len(end_result.get("message")) < 30:
-            print(f"DEBUG: final message is suspiciously short: {end_result.get('message')!r}")
+            logger.debug("DEBUG: final message is suspiciously short: %r", end_result.get("message"))
             # return a more helpful placeholder indicating pipeline likely failed
             return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
         # Extra protection: if final message matches or contains the classification label, return fallback
@@ -681,17 +733,17 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
             lower_msg = final_msg.lower()
             raw_name_cmp = (raw_name or "").strip().lower() if 'raw_name' in locals() else ""
             if raw_name_cmp and raw_name_cmp in lower_msg:
-                print(f"DEBUG: final message equals or contains raw classification ({raw_name_cmp}), returning fallback")
+                logger.debug("DEBUG: final message equals or contains raw classification (%s), returning fallback", raw_name_cmp)
                 return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
             if normalized_name and normalized_name.replace("_", " ") in lower_msg:
-                print(f"DEBUG: final message contains normalized classification ({normalized_name}), returning fallback")
+                logger.debug("DEBUG: final message contains normalized classification (%s), returning fallback", normalized_name)
                 return {"message": "Desculpe, não foi possível gerar a resposta completa agora."}
         except Exception as e:
-            print(f"DEBUG: error checking final message vs classification: {e}")
+            logger.exception("DEBUG: error checking final message vs classification: %s", e)
         return end_result
       else:
         end_result = {
           "message": "O chat nao foi feito para responder duvidas do dia a dia"
         }
-        print(f"DEBUG: classification not matched ({normalized_name}), returning default message")
+        logger.debug("DEBUG: classification not matched (%s), returning default message", normalized_name)
         return end_result

@@ -67,7 +67,7 @@ export default function AppSidebar() {
                         "absolute z-50 right-[-50px] overflow-visible pointer-events-auto",
                         open
                             ? " top-1/2 -translate-y-1/2"
-                            : "right-[-65px] top-0 -translate-x-1/2 translate-y-1/2"
+                            : "-right-[100px] top-0 -translate-x-1/2 translate-y-1/2"
                     )}
                 >
                     <Tooltip>
@@ -98,10 +98,10 @@ export default function AppSidebar() {
                 {menuActions.map((action, index) => (
                     <SidebarGroup key={index} title={action.name}>
                         <Button
-                            variant={"ghost"}
+                            variant={"aside"}
                             size={"lg"}
                             className={cn(
-                                "group relative w-full py-3 flex flex-row gap-3 items-center box-border px-2",
+                                "relative w-full py-3 flex flex-row gap-3 items-center box-border px-2",
                                 open ? "justify-start" : "justify-center",
                                 route.startsWith(action.href) && "text-primary"
                             )}
@@ -116,11 +116,11 @@ export default function AppSidebar() {
                                             : "absolute left-1/2 -translate-x-1/2 w-10 flex items-center justify-center z-10"
                                     )}
                                 >
-                                    <action.Icon strokeWidth={2} className={cn("size-5 transition-all duration-150")}/>
+                                    <action.Icon strokeWidth={2} className={cn("size-5 text-current transition-[color,stroke]", route.startsWith(action.href) && "text-primary")}/>
                                 </span>
                                 <span
                                     className={cn(
-                                        "overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-300 text-lg md:block",
+                                        "overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] transition-colors duration-300 text-lg md:block",
                                         open ? "max-w-[200px] opacity-100 ml-0" : "max-w-0 opacity-0"
                                     )}
                                 >
@@ -136,7 +136,7 @@ export default function AppSidebar() {
                 )}>
                 <div className={cn("flex items-center", open ? "flex-row gap-4 mr-2" : "justify-center w-full")}>
                     <div className={"flex justify-center items-center size-10 bg-secondary rounded-md"}>
-                        <UserIcon/>
+                        <UserIcon className={"text-current transition-[color,stroke] duration-300"} />
                     </div>
                     <div
                         className={cn("overflow-hidden transition-[max-width,opacity] duration-300", open ? "max-w-[180px] opacity-100 ml-2" : "max-w-0 opacity-0")}>
@@ -151,8 +151,8 @@ export default function AppSidebar() {
 
                 {open && (
                     <div className={`flex items-center gap-2 ${open ? "opacity-100" : "opacity-0"} duration-500`}>
-                        <Button variant={"ghost"} size={"icon"} onClick={logout}>
-                            <LogOutIcon className={"text-destructive size-5"}/>
+                        <Button variant={"exit"} size={"icon"} onClick={logout}>
+                            <LogOutIcon className={"text-destructive size-5 transition-[color,stroke] duration-300"}/>
                         </Button>
                     </div>
                 )}

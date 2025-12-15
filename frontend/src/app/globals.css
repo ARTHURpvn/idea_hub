@@ -11,7 +11,7 @@
     --foreground: oklch(0.22 0.03 250); /* Texto escuro azulado */
     --card: oklch(0.98 0.015 250);
     --card-foreground: oklch(0.22 0.03 250);
-    --popover: oklch(0.98 0.015 250);
+    --popover: oklch(0.85 0.18 95);
     --popover-foreground: oklch(0.22 0.03 250);
 
     --primary: oklch(0.85 0.18 95); /* Amarelo brilhante, representa ideias/luz */
@@ -47,7 +47,7 @@
 
     --card: oklch(0.20 0.03 250);
     --card-foreground: oklch(0.98 0.015 250);
-    --popover: oklch(0.20 0.03 250);
+    --popover: oklch(0.78 0.18 95);
     --popover-foreground: oklch(0.98 0.015 250);
 
     --primary: oklch(0.78 0.18 95); /* Amarelo vibrante */
@@ -168,7 +168,6 @@
 /* Smooth color transitions for theme switching */
 * {
     transition-property: background-color, border-color, color, fill, stroke;
-    transition-duration: 200ms;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
