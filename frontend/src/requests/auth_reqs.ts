@@ -24,7 +24,7 @@ interface RegisterRequest {
 // use env so LAN devices can reach backend
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 console.log('API_BASE for axios requests:', API_BASE)
-const api = axios.create({ baseURL: API_BASE, withCredentials: true })
+const api = axios.create({ baseURL: API_BASE})
 
 // return LoginPayload on success, or false on error
 export const req_login = async(data: LoginRequest): Promise<LoginPayload | false> => {
