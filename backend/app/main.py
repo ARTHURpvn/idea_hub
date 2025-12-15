@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 import json
 import os
+import asyncio
+from .database.create_db import ensure_database_and_tables
+from contextlib import asynccontextmanager
 
 middleware = [
     Middleware(
@@ -18,7 +21,21 @@ middleware = [
     Middleware(AuthMiddleware),
 ]
 
-app = FastAPI(middleware=middleware)
+
+@asynccontextmanager
+async def lifespan(app):
+    """Lifespan handler que garante o banco na inicialização.
+
+    Executa a função síncrona em uma thread para não bloquear o loop async.
+    """
+    try:
+        await asyncio.to_thread(ensure_database_and_tables)
+    except Exception as e:
+        print(f"[lifespan] aviso: falha ao garantir DB na startup: {e}")
+    yield
+
+
+app = FastAPI(middleware=middleware, lifespan=lifespan)
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(api_router, prefix="/api", tags=["API"])

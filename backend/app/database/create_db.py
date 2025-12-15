@@ -3,14 +3,37 @@ import os
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2 import sql
+import urllib.parse as urlparse
 
 load_dotenv()
 
+# Valores padrão vindos de variáveis de ambiente
 user = os.getenv("POSTGRES_USER", "idea_forge_user")
 password = os.getenv("POSTGRES_PASSWORD", "postgres")
 host = os.getenv("POSTGRES_HOST", "localhost")
 port = os.getenv("POSTGRES_PORT", "5432")
 db_name = os.getenv("POSTGRES_DB", "idea_forge")
+
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    try:
+        parsed = urlparse.urlparse(database_url)
+        # exemplo: postgresql://user:pass@host:5432/dbname
+        if parsed.scheme and parsed.scheme.startswith("postgres"):
+            if parsed.username:
+                user = parsed.username
+            if parsed.password:
+                password = parsed.password
+            if parsed.hostname:
+                host = parsed.hostname
+            if parsed.port:
+                port = str(parsed.port)
+            path_db = parsed.path.lstrip("/") if parsed.path else None
+            if path_db:
+                db_name = path_db
+        print(f"[create_db] usando DATABASE_URL -> host={host} port={port} db={db_name}")
+    except Exception as e:
+        print(f"[create_db] aviso: falha ao analisar DATABASE_URL: {e}")
 
 
 def ensure_database_and_tables():

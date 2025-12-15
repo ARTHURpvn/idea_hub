@@ -25,8 +25,11 @@ RUN pip install --upgrade pip && \
 # Copia o restante do código da aplicação
 COPY . .
 
+# Copia e garante permissões do script de start
+RUN chmod +x ./start.sh || true
+
 # Expõe a porta padrão do FastAPI
 EXPOSE 8000
 
-# Comando para iniciar o servidor FastAPI
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Comando para iniciar o servidor FastAPI (usa o start.sh para garantir create_db)
+CMD ["bash", "./start.sh"]
