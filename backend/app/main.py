@@ -53,3 +53,18 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+
+# Rota raiz para facilitar testes e health-checks (evita 404 em "/")
+@app.get("/", status_code=200)
+async def root():
+    """Rota de sanity check que garante o DB e responde uma mensagem simples.
+
+    Usa ensure_database_and_tables em uma thread para não bloquear o loop async.
+    """
+    try:
+        await asyncio.to_thread(ensure_database_and_tables)
+    except Exception as e:
+        print(f"[root] aviso: falha ao garantir DB no root: {e}")
+    return {"message": "API rodando! e banco verificado."}
+
