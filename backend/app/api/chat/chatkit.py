@@ -387,14 +387,6 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
             idea_text = getattr(idea_dict, "ai_classification", None) or getattr(idea_dict, "title", None) or str(idea_dict)
             idea_context = getattr(idea_dict, "raw_content", None) or ""
 
-    # If an idea_id was provided but there isn't enough context in the idea's annotations,
-    # ask the user to add details in the 'anotações' field (outside the chat).
-    # Threshold is conservative — change the length if you prefer a different cutoff.
-    if idea_id and (not idea_context or len(str(idea_context).strip()) < 20):
-        logger.debug("Insufficient idea_context for idea_id=%s (len=%d)", idea_id, len(str(idea_context or "")))
-        return {
-            "message": "Parece que não há informações suficientes nas anotações desta ideia. Por favor, adicione suas anotações (fora do chat) para que eu possa ajudar melhor."
-        }
 
     workflow = workflow_input.model_dump()
     # iniciar conversation_history com estrutura compatível em runtime; removi a anotação de tipo estrita para evitar warnings
@@ -416,7 +408,7 @@ async def run_workflow(workflow_input: WorkflowInput, idea_id: str):
                 "role": "system",
                 "content": [
                     {
-                        "type": "context",
+                        "type": "input_text",
                         "text": str(idea_context)
                     }
                 ]

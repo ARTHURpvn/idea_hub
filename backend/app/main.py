@@ -59,7 +59,6 @@ app.openapi = custom_openapi
 @app.get("/", status_code=200)
 async def root():
     """Rota de sanity check que garante o DB e responde uma mensagem simples.
-
     Usa ensure_database_and_tables em uma thread para não bloquear o loop async.
     """
     try:
