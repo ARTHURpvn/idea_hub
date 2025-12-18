@@ -194,15 +194,15 @@ export default function IdeaNotesPage() {
 
                         {idea && <EditIdea idea_id={idea.id!} />}
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleViewRoadmap}
-                            className="gap-2"
-                        >
-                            <Map className="w-4 h-4" />
-                            Roadmap
-                        </Button>
+                        {/*<Button*/}
+                        {/*    variant="outline"*/}
+                        {/*    size="sm"*/}
+                        {/*    onClick={handleViewRoadmap}*/}
+                        {/*    className="gap-2"*/}
+                        {/*>*/}
+                        {/*    <Map className="w-4 h-4" />*/}
+                        {/*    Roadmap*/}
+                        {/*</Button>*/}
 
                     </div>
                 </div>

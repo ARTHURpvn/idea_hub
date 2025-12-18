@@ -37,11 +37,11 @@ export default function AppSidebar() {
             Icon: LightbulbIcon,
             href: "/ideas",
         },
-        {
-            name: "Configurações",
-            Icon: SettingsIcon,
-            href: "/settings",
-        }
+        // {
+        //     name: "Configurações",
+        //     Icon: SettingsIcon,
+        //     href: "/settings",
+        // }
     ]
 
 

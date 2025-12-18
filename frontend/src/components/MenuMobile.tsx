@@ -17,11 +17,11 @@ const MenuMobile = () => {
             Icon: LayoutDashboardIcon,
             href: "/dashboard",
         },
-        {
-            name: "Configurações",
-            Icon: SettingsIcon,
-            href: "/settings",
-        }
+        // {
+        //     name: "Configurações",
+        //     Icon: SettingsIcon,
+        //     href: "/settings",
+        // }
     ]
 
 
