@@ -55,6 +55,7 @@ export const useChatStore = create<ChatStore & ChatStoreActions>()(
                 if(!res) return false
 
                 // Sort messages by created_at for each chat
+                if (!Array.isArray(res)) return false
                 const sortedChats = res.map(chat => ({
                     ...chat,
                     messages: sortMessagesByDate(chat.messages)

@@ -169,7 +169,7 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                         res = await apiUpdateIdea(alt)
                     }
                     if (res) {
-                        toast.success("Ideia atualizada com sucesso")
+                        if (!idea.raw_content) toast.success("Ideia atualizada com sucesso")
 
                         // Update local store with the response
                         if (res.id) {

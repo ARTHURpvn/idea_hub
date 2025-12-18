@@ -34,14 +34,11 @@ export interface IdeaDTO {
     tags?: string[];
 }
 
-// use env so LAN devices can reach backend
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 const api = axios.create({ baseURL: API_BASE })
 
 export function parseStatus(value: unknown): Status {
-    // treat null/undefined as DRAFT
     if (!value && value !== 0) return Status.DRAFT;
-    // numeric codes (0,1,2) or string numbers
     if (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value))) {
         const n = Number(value);
         if (n === 1) return Status.ACTIVE;

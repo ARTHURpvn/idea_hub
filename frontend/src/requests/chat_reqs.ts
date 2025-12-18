@@ -3,7 +3,7 @@ import { getCookie } from "cookies-next"
 import {Chat} from "../store/chat_store";
 
 // use env so LAN devices can reach backend
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/agent"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/"
 console.log('API_BASE for axios requests:', API_BASE)
 const api = axios.create({ baseURL: API_BASE})
 
@@ -25,7 +25,7 @@ export const createChatReq = async(idea_id: string): Promise<CreateChatResponse 
     if (!token) return false;
 
     try {
-        const res = await api.post(`/idea/${idea_id}`, {}, {
+        const res = await api.post(`/api/agent/idea/${idea_id}`, {}, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
@@ -50,7 +50,7 @@ export const sendMessageReq = async({chat_id, message}: MessageRequest): Promise
     if (!token) return false;
 
     try {
-        const res = await api.post(`/${chat_id}?message=${message}`, {}, {
+        const res = await api.post(`/api/agent/${chat_id}?message=${message}`, {}, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
@@ -75,7 +75,7 @@ export const getAllChatsReq = async(): Promise<Chat[] | false> => {
     if (!token) return false;
 
     try {
-        const res = await api.get<Chat[]>("/", {
+        const res = await api.get<Chat[]>("/api/agent/", {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
@@ -99,7 +99,7 @@ export const deleteChatReq = async(chat_id: string): Promise<boolean> => {
     if (!token) return false;
 
     try {
-        await api.delete(`/${chat_id}`, {
+        await api.delete(`/api/agent/${chat_id}`, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }

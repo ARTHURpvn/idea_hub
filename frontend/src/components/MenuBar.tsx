@@ -139,11 +139,11 @@ export default function AppSidebar() {
                         <UserIcon className={"text-current transition-[color,stroke] duration-300"} />
                     </div>
                     <div
-                        className={cn("overflow-hidden transition-[max-width,opacity] duration-300", open ? "max-w-[180px] opacity-100 ml-2" : "max-w-0 opacity-0")}>
+                        className={cn("overflow-hidden transition-[max-width,opacity] duration-300", open ? "max-w-[120px] opacity-100 ml-2" : "max-w-0 opacity-0")}>
                         <p className={"text-sm font-medium"}>
                             {username}
                         </p>
-                        <p className={"text-xs text-muted-foreground"}>
+                        <p className={"text-xs text-muted-foreground truncate overflow-hidden max-w-[90%]"}>
                             {email}
                         </p>
                     </div>
