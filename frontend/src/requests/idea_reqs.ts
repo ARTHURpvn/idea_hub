@@ -14,9 +14,10 @@ export interface IdeaResponse {
     status: Status;
     ai_classification: string;
     raw_content?: string | JSONContent;
-    month?: number;
-    created_at?: string;
     tags?: string[];
+    month?: number;
+    yearMonth?: string; // Format: "YYYY-MM" for proper sorting
+    created_at?: string;
 }
 
 export interface IdeaCreate {
@@ -69,7 +70,7 @@ export const createIdea = async (idea: IdeaCreate) => {
     }
 
     try {
-        await api.post("/api/idea", {
+        let res = await api.post("/api/idea", {
             title: idea.title,
             tags: idea.tags,
         }, {
@@ -77,7 +78,8 @@ export const createIdea = async (idea: IdeaCreate) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        return true
+        console.log(res.data)
+        return res.data
     } catch (error: any) {
         console.error(error)
         if (error?.response) {
@@ -128,18 +130,22 @@ export const getIdeas = async (): Promise<IdeaResponse[]> => {
             return val;
         }
 
-        const mapped: IdeaResponse[] = raw.map((idea) => ({
-            id: idea.id ?? undefined,
-            title: idea.title ?? "(sem título)",
-            status: parseStatus(idea.status),
-            ai_classification: idea.ai_classification ?? "",
-            // prefer raw_content, fallback to description or empty string; try parse JSON if possible
-            raw_content: safeParse(idea.raw_content ?? idea.description ?? ""),
-            // tags may come from backend as array
-            tags: Array.isArray(idea.tags) ? idea.tags : (idea.tags ? String(idea.tags).split(",").map((s: string) => s.trim()).filter(Boolean) : []),
-            month: idea.created_at ? new Date(idea.created_at).getMonth() + 1 : undefined,
-            created_at: idea.created_at ?? undefined,
-        }));
+        const mapped: IdeaResponse[] = raw.map((idea) => {
+            const createdDate = idea.created_at ? new Date(idea.created_at) : null;
+            return {
+                id: idea.id ?? undefined,
+                title: idea.title ?? "(sem título)",
+                status: parseStatus(idea.status),
+                ai_classification: idea.ai_classification ?? "",
+                // prefer raw_content, fallback to description or empty string; try parse JSON if possible
+                raw_content: safeParse(idea.raw_content ?? idea.description ?? ""),
+                // tags may come from backend as array
+                tags: Array.isArray(idea.tags) ? idea.tags : (idea.tags ? String(idea.tags).split(",").map((s: string) => s.trim()).filter(Boolean) : []),
+                month: createdDate ? createdDate.getMonth() + 1 : undefined,
+                yearMonth: createdDate ? `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}` : undefined,
+                created_at: idea.created_at ?? undefined,
+            };
+        });
 
         return mapped;
     } catch (error: any) {
@@ -197,6 +203,8 @@ export const getIdeaById = async (id: string): Promise<IdeaResponse | null> => {
             }
         }
 
+        const createdDate = raw.created_at ? new Date(raw.created_at) : null;
+
         const mapped: IdeaResponse = {
             id: raw.id ?? undefined,
             title: raw.title ?? "(sem título)",
@@ -204,7 +212,8 @@ export const getIdeaById = async (id: string): Promise<IdeaResponse | null> => {
             ai_classification: raw.ai_classification ?? "",
             raw_content: parsedContent,
             tags: Array.isArray(raw.tags) ? raw.tags : (raw.tags ? String(raw.tags).split(",").map((s: string) => s.trim()).filter(Boolean) : []),
-            month: raw.created_at ? new Date(raw.created_at).getMonth() + 1 : undefined,
+            month: createdDate ? createdDate.getMonth() + 1 : undefined,
+            yearMonth: createdDate ? `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}` : undefined,
             created_at: raw.created_at ?? undefined,
         }
 

@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { MessageCircle, Loader2, Sparkles, Map, ChevronLeft} from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // SimpleEditor (inline mode when embutido)
 import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor"
@@ -38,26 +39,143 @@ export default function IdeaNotesPage() {
     const ideaId = Array.isArray(params?.id) ? params?.id[0] ?? "" : (params?.id ?? "")
     const idea_id = String(ideaId || "")
 
+    // Default welcome content for new ideas
+    const defaultContent: JSONContent = {
+        type: "doc",
+        content: [
+            {
+                type: "heading",
+                attrs: { level: 1 },
+                content: [{ type: "text", text: "Bem-vindo à sua nova ideia! 💡" }]
+            },
+            {
+                type: "paragraph",
+                content: [
+                    { type: "text", text: "Este é o seu espaço para desenvolver e organizar suas ideias de forma estruturada." }
+                ]
+            },
+            {
+                type: "heading",
+                attrs: { level: 2 },
+                content: [{ type: "text", text: "🤖 Assistente de IA Integrado" }]
+            },
+            {
+                type: "paragraph",
+                content: [
+                    {
+                        type: "text",
+                        text: "Temos uma IA especializada para ajudá-lo a desenvolver sua ideia! Ela pode:"
+                    }
+                ]
+            },
+            {
+                type: "bulletList",
+                content: [
+                    {
+                        type: "listItem",
+                        content: [{
+                            type: "paragraph",
+                            content: [{ type: "text", text: "Sugerir melhorias e funcionalidades" }]
+                        }]
+                    },
+                    {
+                        type: "listItem",
+                        content: [{
+                            type: "paragraph",
+                            content: [{ type: "text", text: "Responder perguntas sobre implementação" }]
+                        }]
+                    },
+                    {
+                        type: "listItem",
+                        content: [{
+                            type: "paragraph",
+                            content: [{ type: "text", text: "Ajudar a estruturar seu projeto" }]
+                        }]
+                    },
+                    {
+                        type: "listItem",
+                        content: [{
+                            type: "paragraph",
+                            content: [{ type: "text", text: "Dar insights sobre tecnologias e melhores práticas" }]
+                        }]
+                    }
+                ]
+            },
+            {
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: "💬 Como acessar a IA?" }]
+            },
+            {
+                type: "paragraph",
+                content: [
+                    {
+                        type: "text",
+                        text: "É simples! Clique no "
+                    },
+                    {
+                        type: "text",
+                        marks: [{ type: "bold" }],
+                        text: "botão de chat flutuante"
+                    },
+                    {
+                        type: "text",
+                        text: " no canto inferior direito da tela (ícone de mensagem 💬). Uma janela lateral será aberta e você poderá conversar diretamente com a IA sobre sua ideia!"
+                    }
+                ]
+            },
+            {
+                type: "horizontalRule"
+            },
+            {
+                type: "paragraph",
+                content: [
+                    {
+                        type: "text",
+                        marks: [{ type: "italic" }],
+                        text: "Dica: Você pode editar este texto e começar a escrever suas ideias. O conteúdo é salvo automaticamente! ✨"
+                    }
+                ]
+            }
+        ]
+    }
+
     // attempt to find idea first in recentIdeas (fast), then in full responses
     const recent = useIdeaStore((state) => state.recentIdeas) || []
     const responses = useIdeaStore((state) => state.responses) || []
+    const mapIdeas = useIdeaStore((state) => state.mapIdeas)
+
+    // State to hold idea data when not in store
+    const [ideaData, setIdeaData] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+
     // comparison normalized to string to avoid number vs string mismatch
-    const idea = recent.find((i) => String(i.id) === idea_id) || responses.find((r) => String(r.id) === idea_id)
+    const storeIdea = recent.find((i) => String(i.id) === idea_id) || responses.find((r) => String(r.id) === idea_id)
+    const idea = ideaData || storeIdea
 
     // Load idea content on mount or when idea_id changes
     useEffect(() => {
         let mounted = true
         const load = async () => {
             if (!idea_id) {
+                setLoading(false)
                 return
             }
 
             // Try to get from store first
             const storeIdea = recent.find((i) => String(i.id) === idea_id) || responses.find((r) => String(r.id) === idea_id)
-            if (storeIdea && (storeIdea as any).raw_content !== undefined) {
+
+            if (storeIdea) {
                 if (mounted) {
                     console.log('[page] setting ideaContent from store:', (storeIdea as any).raw_content);
-                    setIdeaContent((storeIdea as any).raw_content as string | JSONContent)
+                    const content = (storeIdea as any).raw_content
+                    // Use default content if no content exists or if it's empty
+                    if (!content || content === "" || (typeof content === 'object' && (!content.content || content.content.length === 0))) {
+                        setIdeaContent(defaultContent)
+                    } else {
+                        setIdeaContent(content as string | JSONContent)
+                    }
+                    setLoading(false)
                 }
                 return
             }
@@ -67,10 +185,23 @@ export default function IdeaNotesPage() {
                 const server = await getIdeaById(idea_id)
                 if (mounted && server) {
                     console.log('[page] setting ideaContent from server:', server.raw_content);
-                    setIdeaContent(server.raw_content ?? "")
+                    const content = server.raw_content
+                    // Use default content if no content exists or if it's empty
+                    if (!content || content === "" || (typeof content === 'object' && (!content.content || content.content.length === 0))) {
+                        setIdeaContent(defaultContent)
+                    } else {
+                        setIdeaContent(content ?? "")
+                    }
+                    setIdeaData(server)
+                    // Update store with all ideas
+                    await mapIdeas()
                 }
             } catch (err) {
                 console.warn('failed to fetch idea by id', err)
+            } finally {
+                if (mounted) {
+                    setLoading(false)
+                }
             }
         }
         load()
@@ -139,19 +270,45 @@ export default function IdeaNotesPage() {
         }
     }
     const [isChatOpen, setIsChatOpen] = useState(false)
+    const [showChatPulse, setShowChatPulse] = useState(true)
 
+    // Remove pulse after first interaction or after 10 seconds
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowChatPulse(false)
+        }, 10000) // Remove pulse after 10 seconds
+
+        return () => clearTimeout(timer)
+    }, [])
+
+    const handleChatOpen = () => {
+        setShowChatPulse(false)
+        setIsChatOpen(true)
+    }
+
+    // Show loading state
+    if (loading) {
+        return (
+            <div className="relative w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-center" style={{ height: 'calc(100vh - 80px)' }}>
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Carregando ideia...</p>
+                </div>
+            </div>
+        )
+    }
 
     return (
-        <div className="relative w-full max-w-7xl mx-auto px-6 py-4 flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col" style={{ height: 'calc(100vh - 60px)' }}>
             {/* Header with Title, Status, and Actions */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-xl p-6 shadow-lg border border-border flex-shrink-0 mb-4"
+                className="bg-card rounded-xl p-4 sm:p-6 shadow-lg border border-border flex-shrink-0 mb-3 sm:mb-4"
             >
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0 w-full">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -161,27 +318,28 @@ export default function IdeaNotesPage() {
                                 <ChevronLeft className="w-4 h-4 mr-1" />
                                 Voltar
                             </Button>
-                            <Separator orientation="vertical" className="h-6" />
+                            <Separator orientation="vertical" className="h-6 hidden xs:block" />
                             {idea && (
-                                <Badge className={getStatusColor(idea.status)}>
+                                <Badge className={`${getStatusColor(idea.status)} text-xs`}>
                                     {idea.status}
                                 </Badge>
                             )}
                             {idea?.ai_classification && (
-                                <Badge variant="outline" className="gap-1">
+                                <Badge variant="outline" className="gap-1 text-xs">
                                     <Sparkles className="w-3 h-3" />
-                                    {idea.ai_classification}
+                                    <span className="hidden xs:inline">{idea.ai_classification}</span>
+                                    <span className="xs:hidden">IA</span>
                                 </Badge>
                             )}
                         </div>
 
-                        <h1 className="text-3xl font-bold text-foreground mb-2 truncate">
+                        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 break-words">
                             {idea?.title || "Carregando..."}
                         </h1>
 
                         {idea?.tags && idea.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {idea.tags.map((tag, idx) => (
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                {idea.tags.map((tag: string, idx: number) => (
                                     <Badge key={idx} variant="secondary" className="text-xs">
                                         {tag}
                                     </Badge>
@@ -190,7 +348,7 @@ export default function IdeaNotesPage() {
                         )}
                     </div>
 
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap w-full sm:w-auto">
 
                         {idea && <EditIdea idea_id={idea.id!} />}
 
@@ -223,20 +381,48 @@ export default function IdeaNotesPage() {
             </motion.div>
 
             {/* Botão flutuante de chat */}
-            <motion.div
-                className="fixed bottom-6 right-6 z-50"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-            >
-                <Button
-                    size="lg"
-                    className="rounded-full shadow-2xl hover:shadow-primary/50 transition-all duration-300"
-                    onClick={() => setIsChatOpen(true)}
-                >
-                    <MessageCircle className="w-5 h-5" />
-                </Button>
-            </motion.div>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <motion.div
+                            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <div className="relative">
+                                {showChatPulse && (
+                                    <motion.div
+                                        className="absolute inset-0 rounded-full bg-primary"
+                                        animate={{
+                                            scale: [1, 1.2, 1],
+                                            opacity: [0.5, 0, 0.5],
+                                        }}
+                                        transition={{
+                                            duration: 2,
+                                            repeat: Infinity,
+                                            ease: "easeInOut",
+                                        }}
+                                    />
+                                )}
+                                <Button
+                                    size="lg"
+                                    className="size-10 sm:size-12 rounded-full shadow-2xl hover:shadow-primary/50 transition-all duration-300 relative"
+                                    onClick={handleChatOpen}
+                                >
+                                    <Sparkles className="size-4 sm:size-5" />
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-sm sm:text-base">
+                        <p className="flex items-center gap-2">
+                            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
+                            Converse com a IA sobre esta ideia
+                        </p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
 
             {/* Roadmap Dialog */}
             <Dialog open={isRoadmapDialogOpen} onOpenChange={setIsRoadmapDialogOpen}>

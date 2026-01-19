@@ -53,11 +53,11 @@ export default function AppSidebar() {
                     <Image
                         src={open ? "/ideahub_logo.png" : "/ideahub_icon.png"}
                         alt={"ideahub icon"}
-                        width={open ? 240 : 64}
-                        height={48}
+                        width={open ? 120 : 32}
+                        height={20}
                         className={cn(
                             "object-contain transition-[width,opacity,transform] duration-150 ease-in-out",
-                            open ? "w-full" : "w-16"
+                            open ? "w-[50%]" : "w-9"
                         )}
                         priority
                     />

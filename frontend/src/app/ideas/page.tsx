@@ -48,19 +48,19 @@ export default function IdeiasPage() {
 
     const len = filteredIdeas.length
     return (
-        <div className="flex flex-col w-full p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
+        <div className="flex flex-col w-full p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto">
             {/* Top Bar */}
-            <div className="sticky top-4 bg-background/80 backdrop-blur-md z-10 p-4 rounded-xl border">
+            <div className="sticky top-2 sm:top-4 bg-background/80 backdrop-blur-md z-10 p-3 sm:p-4 rounded-xl border">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
-                        <h1 className="text-3xl font-bold text-primary">Explorar Ideias</h1>
-                        <p className="text-muted-foreground text-sm">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-primary">Explorar Ideias</h1>
+                        <p className="text-muted-foreground text-xs sm:text-sm">
                             Descubra, inspire-se e colabore em novas ideias.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                        <div className="relative w-full md:w-120 mr-4">
+                    <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 w-full md:w-auto">
+                        <div className="relative w-full xs:w-64 md:w-80">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar ideia..."
@@ -76,35 +76,35 @@ export default function IdeiasPage() {
 
             {/* Active tag filter */}
             {activeTag && (
-                <div className="flex items-center gap-2">
-                    <div className="text-sm text-muted-foreground">Filtrando por tag:</div>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTag(activeTag)} className="px-2">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <div className="text-xs sm:text-sm text-muted-foreground">Filtrando por tag:</div>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTag(activeTag)} className="px-2 text-xs sm:text-sm">
                         #{activeTag}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={clearTagFilter} className="text-sm">Limpar</Button>
+                    <Button variant="ghost" size="sm" onClick={clearTagFilter} className="text-xs sm:text-sm">Limpar</Button>
                 </div>
             )}
 
             {/* Result count */}
-            <div className="text-sm text-muted-foreground">{filteredIdeas.length} ideias encontradas</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">{filteredIdeas.length} ideias encontradas</div>
 
             <Separator />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Main list */}
-                <div className="col-span-2">
-                    <div className={`${len === 0 ? "flex" : "grid"} justify-center sm:grid-cols-2 lg:grid-cols-2 gap-5`}>
+                <div className="col-span-1 lg:col-span-2">
+                    <div className={`${len === 0 ? "flex" : "grid"} justify-center grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5`}>
                         {filteredIdeas.map((idea) => (
                             <Card
                                 key={idea.id}
                                 className="transition-all transform hover:scale-[1.02] duration-200 hover:shadow-2xl cursor-pointer overflow-hidden"
                             >
-                                <CardHeader className="flex items-start justify-between gap-2">
-                                    <div>
-                                        <h2 className="text-lg font-semibold">{idea.title}</h2>
-                                        <p className="text-xs text-muted-foreground">{idea.ai_classification ? `Classificação: ${idea.ai_classification}` : 'Classificação: —'}</p>
+                                <CardHeader className="flex flex-row items-start justify-between gap-2 p-4 sm:p-6">
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="text-base sm:text-lg font-semibold truncate">{idea.title}</h2>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{idea.ai_classification ? `Classificação: ${idea.ai_classification}` : 'Classificação: —'}</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-shrink-0">
                                         <a
                                             href={`/ideas/${idea.id}`}
                                             onClick={(e) => e.stopPropagation()}
@@ -116,27 +116,27 @@ export default function IdeiasPage() {
                                     </div>
                                 </CardHeader>
 
-                                <CardContent className="flex flex-col gap-3">
-                                    <div className="flex flex-wrap gap-2">
+                                <CardContent className="flex flex-col gap-3 p-4 sm:p-6 pt-0">
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                                         {idea.tags && idea.tags.length > 0 ? (
                                             idea.tags.map((tag) => (
-                                                <Badge key={tag} variant="secondary" className="cursor-pointer hover:opacity-90 transition" onClick={(e) => { e.stopPropagation(); setActiveTag(tag); }}>{tag}</Badge>
+                                                <Badge key={tag} variant="secondary" className="cursor-pointer hover:opacity-90 transition text-xs" onClick={(e) => { e.stopPropagation(); setActiveTag(tag); }}>{tag}</Badge>
                                             ))
                                         ) : (
-                                            <Badge variant="outline">Sem tags</Badge>
+                                            <Badge variant="outline" className="text-xs">Sem tags</Badge>
                                         )}
                                     </div>
 
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-2 text-xs text-muted-foreground">
                                         <div>Criado: {formattedDate(idea.created_at)}</div>
-                                        <div className="px-2 py-1 rounded-md bg-muted/10 text-muted-foreground">{idea.status}</div>
+                                        <div className="px-2 py-1 rounded-md bg-muted/10 text-muted-foreground w-fit">{idea.status}</div>
                                     </div>
                                 </CardContent>
 
-                                <CardFooter className="flex items-center justify-between">
-                                     <div className="flex items-center gap-2">
+                                <CardFooter className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 p-4 sm:p-6 pt-0">
+                                     <div className="flex items-center gap-2 w-full xs:w-auto">
                                          <EditIdea idea_id={idea.id!} triggerLabel={"Editar"} />
-                                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); window.location.href = `/ideas/${idea.id}`; }}>
+                                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); window.location.href = `/ideas/${idea.id}`; }} className="flex-1 xs:flex-initial">
                                              Ver
                                          </Button>
                                      </div>

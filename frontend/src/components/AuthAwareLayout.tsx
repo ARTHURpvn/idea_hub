@@ -16,8 +16,11 @@ export default function AuthAwareLayout({ children }: Props) {
   const pathname = usePathname() || "";
   const mobile = useIsMobile()
   const isAuthRoute = pathname.startsWith("/auth") || pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/auth/");
+  const isHomePage = pathname === "/";
+  const isPublicRoute = isAuthRoute || isHomePage;
 
-  if (isAuthRoute) {
+  // Rotas públicas (auth e home) não mostram menu
+  if (isPublicRoute) {
     return (
       <>
         <ToasterClient />
@@ -25,14 +28,17 @@ export default function AuthAwareLayout({ children }: Props) {
       </>
     );
   }
-    if (mobile) {
-        return (
-            <>
-                <MenuMobile />
-                <main className="w-full pb-20">{children}</main>
-            </>
-        )
-    }
+
+  // Rotas protegidas com menu
+  if (mobile) {
+    return (
+      <>
+        <MenuMobile />
+        <main className="w-full pb-20">{children}</main>
+      </>
+    )
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

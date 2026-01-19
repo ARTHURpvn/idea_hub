@@ -5,6 +5,9 @@ import AuthAwareLayout from "../components/AuthAwareLayout";
 import { useIdeaStore } from "@/store/idea_store";
 import { useRoadmapStore } from "@/store/roadmap_store";
 
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -34,6 +37,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
       >
+        <Analytics />
+        <SpeedInsights />
+
         <AuthAwareLayout>
           {children}
         </AuthAwareLayout>

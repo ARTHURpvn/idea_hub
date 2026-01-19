@@ -77,11 +77,13 @@ const LoginPage = () => {
             const params = new URLSearchParams(window.location.search)
             const reason = params.get("reason")
             if (reason === "auth_required") {
-                toast.error("É necessário estar logado para acessar essa página. Redirecionando para login.")
+                toast.warning("Acesso restrito 🔒", {
+                    description: "Você precisa fazer login para acessar esta página"
+                })
             }
             const msg = params.get("message")
             if (msg) {
-                toast(msg)
+                toast.info(msg)
             }
         } catch (e) {
             // noop
@@ -94,28 +96,27 @@ const LoginPage = () => {
         if(res) form.reset()
     }
     return (
-        <div className="flex items-center justify-center h-screen">
-
-            <Card className="w-full max-w-sm">
-                <CardHeader>
-                    <CardTitle>Logar na Plataforma</CardTitle>
-                    <CardDescription>
+        <div className="flex items-center justify-center min-h-screen p-4">
+            <Card className="w-full max-w-md sm:max-w-lg">
+                <CardHeader className="space-y-1 p-4 sm:p-6">
+                    <CardTitle className="text-xl sm:text-2xl">Logar na Plataforma</CardTitle>
+                    <CardDescription className="text-sm">
                         Insira suas credenciais para acessar sua conta.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                             <FormField
                                 control={form.control}
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Gmail</FormLabel>
+                                        <FormLabel className="text-sm">Gmail</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Insira seu email" type={"email"} maxLength={40} {...field} />
                                         </FormControl>
-                                        <FormDescription>
+                                        <FormDescription className="text-xs sm:text-sm">
                                             Insira o email que foi cadastrado.
                                         </FormDescription>
                                         <FormMessage />
@@ -127,27 +128,28 @@ const LoginPage = () => {
                                 name="password"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Senha</FormLabel>
+                                        <FormLabel className="text-sm">Senha</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Input placeholder="Insira sua Senha" type={pass} required maxLength={24} {...field} />
-                                                <button onClick={togglePass} className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                                    {pass === "password" ? <EyeClosedIcon /> : <EyeIcon />}
+                                                <button type="button" onClick={togglePass} className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                                    {pass === "password" ? <EyeClosedIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                                                 </button>
                                             </div>
                                         </FormControl>
-                                        <FormDescription>
+                                        <FormDescription className="text-xs sm:text-sm">
                                             Insira a senha que foi cadastrada.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className={"w-full"}>Submit</Button>
+                            <Button type="submit" className={"w-full"}>Logar</Button>
                         </form>
                     </Form>
                 </CardContent>
-                <CardFooter className="flex-col gap-2">
+                <CardFooter className="flex-col gap-2 p-4 sm:p-6">
+                    <p className="text-sm text-muted-foreground"> Ainda não tem conta?</p>
                     <Button variant="outline" className="w-full" asChild>
                         <Link href={"/auth/register"}>
                             Registrar-se

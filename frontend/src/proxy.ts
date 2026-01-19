@@ -18,7 +18,9 @@ const proxy = (req: NextRequest) => {
     }
 
     const isAuthRoute = pathname.startsWith("/auth");
-    const isProtected: boolean = !isAuthRoute;
+    const isHomePage = pathname === "/";
+    const isPublicRoute = isAuthRoute || isHomePage;
+    const isProtected: boolean = !isPublicRoute;
 
     if (isProtected) {
         if (token) return NextResponse.next();

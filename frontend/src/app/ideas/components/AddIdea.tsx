@@ -37,7 +37,7 @@ const formSchema = z.object({
     tagInput: z.string().optional(),
 })
 
-const AddIdea = ({variant}: {variant: "default" | "secondary"}) => {
+const AddIdea = ({variant}: {variant: "default" | "secondary" | "primary"}) => {
     const [open, setOpen] = useState<boolean>(false)
     const [tags, setTags] = useState<string[]>([])
     const [loading, setLoading] = useState<boolean>(false)
@@ -57,15 +57,13 @@ const AddIdea = ({variant}: {variant: "default" | "secondary"}) => {
         try {
             const success = await createIdea(values.ideaName, tags)
             if (success) {
-                form.reset()
-                setTags([])
-                setOpen(false)
+                return
             } else {
                 console.warn('createIdea returned false')
+                setLoading(false)
             }
         } catch (err) {
             console.error('createIdea failed', err)
-        } finally {
             setLoading(false)
         }
     }
@@ -96,7 +94,13 @@ const AddIdea = ({variant}: {variant: "default" | "secondary"}) => {
     return (
         <Dialog open={open} onOpenChange={(v) => { if (loading) return; setOpen(v) }}>
             <DialogTrigger asChild>
-                <Button variant={variant}><PlusIcon /> Nova Ideia</Button>
+                <Button
+                    variant={variant == "primary" ? "default": variant}
+                    className="w-full sm:w-auto"
+                >
+                    <PlusIcon />
+                    { variant == "primary" ? "Criar primeira ideia" : "Nova Ideia"}
+                </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader className="mb-4">

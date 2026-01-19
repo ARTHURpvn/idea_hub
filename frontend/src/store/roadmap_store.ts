@@ -28,7 +28,15 @@ export const useRoadmapStore = create<RoadmapStore & RoadmapStoreActions>()(
             },
             createRoadmap: async(id: string, exported_to: string) => {
                 const res = await createRoadmap(id, exported_to)
-                if (res) toast.success("Roadmap criada com sucesso")
+                if (res) {
+                    toast.success("Roadmap gerado! 🗺️", {
+                        description: "Seu roadmap foi criado e está pronto para uso"
+                    })
+                } else {
+                    toast.error("Erro ao gerar roadmap", {
+                        description: "Não foi possível criar o roadmap. Tente novamente."
+                    })
+                }
             },
             setNull: () => {
                 set({

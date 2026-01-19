@@ -3,6 +3,7 @@ import {createIdea, getIdeas, IdeaDTO, IdeaResponse, Status, updateIdea as apiUp
 import {createJSONStorage, persist } from "zustand/middleware";
 import { toast } from "sonner";
 import { JSONContent } from "@tiptap/react";
+import { createChatReq, sendMessageReq } from "../requests/chat_reqs";
 
 interface RecentIdea {
     id?: string;
@@ -71,28 +72,37 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                     { ideaCreated: 0, ideaProgress: 0, ideaFinished: 0 }
                 );
 
-                const cleanedResponses: Array<Omit<IdeaResponse, "month">> = response.map(({ month, ...rest }) => ({ ...rest, id: rest.id !== undefined && rest.id !== null ? String(rest.id) : undefined }));
+                const cleanedResponses: Array<Omit<IdeaResponse, "month" | "yearMonth">> = response.map(({ month, yearMonth, ...rest }) => ({ ...rest, id: rest.id !== undefined && rest.id !== null ? String(rest.id) : undefined }));
 
-                const uniqueMonthNums: number[] = response
-                    .map(r => r.month)
-                    .filter((m): m is number => typeof m === 'number')
+                // Group by yearMonth and sort chronologically
+                const uniqueYearMonths: string[] = response
+                    .map(r => r.yearMonth)
+                    .filter((ym): ym is string => typeof ym === 'string')
                     .filter((value, index, self) => self.indexOf(value) === index)
-                    .sort((a, b) => a - b);
+                    .sort(); // YYYY-MM format sorts correctly lexicographically
 
-                const countsPerMonth: Record<number, number> = {};
+                const countsPerYearMonth: Record<string, number> = {};
                 response.forEach(r => {
-                    if (typeof r.month === 'number') {
-                        countsPerMonth[r.month] = (countsPerMonth[r.month] || 0) + 1;
+                    if (typeof r.yearMonth === 'string') {
+                        countsPerYearMonth[r.yearMonth] = (countsPerYearMonth[r.yearMonth] || 0) + 1;
                     }
                 });
 
                 const monthShortNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-                const monthLabels = uniqueMonthNums.map(n => monthShortNames[n - 1] ?? String(n));
-                const monthlyCounts = uniqueMonthNums.map(n => countsPerMonth[n] || 0);
+                // Convert YYYY-MM to display labels (e.g., "Nov/25", "Jan/26")
+                const monthLabels = uniqueYearMonths.map(ym => {
+                    const [year, month] = ym.split('-');
+                    const monthNum = parseInt(month, 10);
+                    const yearShort = year.slice(2); // Get last 2 digits of year
+                    return `${monthShortNames[monthNum - 1]}/${yearShort}`;
+                });
 
-                const currentMonthNumber = new Date().getMonth() + 1;
-                const ideaCreatedThisMonth = response.filter(r => r.month === currentMonthNumber).length;
+                const monthlyCounts = uniqueYearMonths.map(ym => countsPerYearMonth[ym] || 0);
+
+                const currentDate = new Date();
+                const currentYearMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+                const ideaCreatedThisMonth = response.filter(r => r.yearMonth === currentYearMonth).length;
 
                 const recent = [...response]
                     .filter(r => !!r.created_at)
@@ -131,26 +141,26 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                 const idea = {title, tags}
                 try {
                     const response = await createIdea(idea)
-                    if(response) {
-                        toast.success("Ideia criada com sucesso")
-                        // refresh mapped ideas in store so UI updates immediately
-                        try {
-                            const state = get()
-                            if (state && typeof state.mapIdeas === 'function') {
-                                await state.mapIdeas()
-                            }
-                        } catch (err) {
-                            console.warn('mapIdeas failed after createIdea', err)
-                        }
+                    if(response && response.id) {
+                        toast.success("Ideia criada! 🚀", {
+                            description: "Redirecionando para começar a desenvolver..."
+                        })
+                        // Redireciona diretamente para a ideia criada
+                        window.location.href = `/ideas/${response.id}`
+
                         return true
                     }
                     else {
-                        toast.error("Erro ao criar ideia")
+                        toast.error("Falha ao criar ideia", {
+                            description: "O servidor não retornou os dados esperados"
+                        })
                         return false
                     }
                 }
                 catch (error) {
-                    toast.error("Erro ao criar ideia")
+                    toast.error("Erro ao criar ideia", {
+                        description: "Verifique sua conexão e tente novamente"
+                    })
                     console.log(error)
                     return false
                 }
@@ -169,7 +179,24 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                         res = await apiUpdateIdea(alt)
                     }
                     if (res) {
-                        if (!idea.raw_content) toast.success("Ideia atualizada com sucesso")
+                        if (!idea.raw_content) {
+                            // Mostrar mensagem específica baseado no que foi atualizado
+                            if (idea.status) {
+                                const statusMessages: Record<string, string> = {
+                                    'DRAFT': 'Ideia movida para Rascunho',
+                                    'ACTIVE': 'Ideia em Progresso! 💪',
+                                    'FINISHED': 'Ideia Concluída! 🎉'
+                                }
+                                const message = typeof idea.status === 'string' ? statusMessages[idea.status] : undefined
+                                toast.success(message || "Status atualizado", {
+                                    description: "Suas alterações foram salvas"
+                                })
+                            } else {
+                                toast.success("Ideia atualizada! ✓", {
+                                    description: "Todas as alterações foram salvas"
+                                })
+                            }
+                        }
 
                         // Update local store with the response
                         if (res.id) {
@@ -207,24 +234,32 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
 
                         return true
                     }
-                    toast.error("Erro ao atualizar ideia")
+                    toast.error("Falha ao atualizar", {
+                        description: "O servidor não respondeu corretamente"
+                    })
                     return false
                 } catch (err) {
                     console.error('updateIdea error', err)
-                    toast.error("Erro ao atualizar ideia")
+                    toast.error("Erro ao salvar alterações", {
+                        description: "Verifique sua conexão e tente novamente"
+                    })
                     return false
                 }
             },
 
             deleteIdea: async(id?: string) => {
                 if (!id) {
-                    toast.error('ID da ideia ausente')
+                    toast.error('Erro ao excluir', {
+                        description: 'ID da ideia não foi fornecido'
+                    })
                     return false
                 }
                 try {
                     const ok = await apiDeleteIdea(id)
                     if (ok) {
-                        toast.success('Ideia removida')
+                        toast.success('Ideia removida! 🗑️', {
+                            description: 'A ideia foi excluída permanentemente'
+                        })
                         // optimistically remove from responses
                         set((prev) => ({ ...prev, responses: prev.responses.filter(r => r.id !== id) }))
                         // refresh mapped data
@@ -238,11 +273,15 @@ export const useIdeaStore = create<IdeaStore & IdeaStoreActions>()(
                         }
                         return true
                     }
-                    toast.error('Erro ao excluir ideia')
+                    toast.error('Falha ao excluir', {
+                        description: 'Não foi possível remover a ideia. Tente novamente.'
+                    })
                     return false
                 } catch (err) {
                     console.error('deleteIdea error', err)
-                    toast.error('Erro ao excluir ideia')
+                    toast.error('Erro ao excluir ideia', {
+                        description: 'Verifique sua conexão e tente novamente'
+                    })
                     return false
                 }
             },

@@ -39,7 +39,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 set({name: res.name, email: res.email})
                 if (!res.access_token) {
                     console.warn('No access_token returned from login response')
-                    toast.error('Login não retornou token do servidor.')
+                    toast.error('Erro de autenticação', {
+                        description: 'Token não foi retornado pelo servidor'
+                    })
                     return false
                 }
 
@@ -88,7 +90,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     secure: true
                 })
                 localStorage.clear()
-               toast.success("Desconectado com sucesso")
+                toast.success("Até logo! 👋", {
+                    description: "Você foi desconectado com sucesso"
+                })
                 window.location.href = "/auth/login"
             }
         }),

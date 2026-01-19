@@ -23,12 +23,14 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth_store";
 import { useIdeaStore } from "@/store/idea_store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Status } from "@/requests/idea_reqs";
 import { useRoadmapStore } from "@/store/roadmap_store";
 import MetricCard from "./components/MetricCards";
 import AddIdea from "../ideas/components/AddIdea";
 import Link from "next/link";
+import { createChatReq, sendMessageReq } from "@/requests/chat_reqs";
+import WelcomeModal from "@/components/WelcomeModal";
 
 const fallbackData = [
     { name: "Jun", ideias: 2 },
@@ -39,6 +41,7 @@ const fallbackData = [
 ];
 
 export default function Dashboard() {
+    const [showIntro, setShowIntro] = useState(false);
     const mapIdeas = useIdeaStore((state) => state.mapIdeas);
     const mapRoadmaps = useRoadmapStore((state) => state.mapRoadmaps)
 
@@ -47,12 +50,59 @@ export default function Dashboard() {
     const monthlyCounts = useIdeaStore((state) => state.monthlyCounts) || [];
     const recentIdeas = useIdeaStore((state) => state.recentIdeas) || [];
 
+    // show introductory modal only on first visit
+    useEffect(() => {
+        try {
+            const seen = localStorage.getItem("seen_dashboard_intro");
+            if (!seen) setShowIntro(true);
+        } catch (e) {
+            // localStorage might not be available in some environments
+            console.warn("localStorage not available", e);
+        }
+    }, []);
+
+    const handleCloseIntro = () => {
+        try { localStorage.setItem("seen_dashboard_intro", "1"); } catch {}
+        setShowIntro(false);
+    }
+
     useEffect(() => {
         mapIdeas && typeof mapIdeas === 'function' && mapIdeas().catch((err: any) => console.error("Failed to map responses:", err));
     }, [mapIdeas]);
     useEffect(() => {
         mapRoadmaps && typeof mapRoadmaps === 'function' && mapRoadmaps().catch((err: any) => console.error("Failed to map responses:", err));
     }, [mapRoadmaps]);
+
+    // Seed an initial chat/message for the user's first idea (only once)
+    useEffect(() => {
+        try {
+            const seeded = localStorage.getItem("seeded_initial_chat");
+            if (seeded) return;
+            if (!recentIdeas || !recentIdeas.length) return;
+
+            const first = recentIdeas[0];
+            if (!first?.id) return;
+
+            // Use existing helpers: create a chat for the idea and send an initial message
+            (async () => {
+                try {
+                    const ideaId = String(first.id);
+                    const created = await createChatReq(ideaId);
+                    if (!created) return;
+                    const chatId = created.chat_id;
+                    const initial = `Olá! Este é o chat inicial para a ideia "${first.title}". Pergunte algo sobre a ideia ou peça uma sugestão.`;
+                    const sent = await sendMessageReq({ chat_id: chatId, message: initial });
+                    if (sent) {
+                        try { localStorage.setItem('seeded_initial_chat', '1'); } catch (e) {}
+                    }
+                } catch (err) {
+                    console.warn('failed to seed initial chat', err);
+                }
+            })();
+        } catch (e) {
+            console.warn('seed initial chat error', e);
+        }
+    }, [recentIdeas]);
 
     // prepare chart data aligning months -> monthlyCounts
     const chartData = months.length && monthlyCounts.length
@@ -75,20 +125,18 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="p-8 space-y-10 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 md:space-y-10 max-w-7xl mx-auto">
             {/* Cabeçalho */}
-            <header className="flex flex-col gap-6 lg:flex-row justify-between items-end lg:items-start">
+            <header className="flex flex-col gap-4 sm:gap-6 lg:flex-row justify-between items-start lg:items-start">
                 <div className={"space-y-1"}>
-                    <h1 className="text-3xl font-bold tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                         Bem-vindo de volta, <span className="text-secondary">{name}</span>
                     </h1>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground">
                         Aqui está um resumo das suas ideias e atividades recentes.
                     </p>
                 </div>
-                <div>
-                    <AddIdea variant={"default"}/>
-                </div>
+                <AddIdea variant={"default"}/>
             </header>
 
             {/* Cards principais */}
@@ -102,15 +150,15 @@ export default function Dashboard() {
             {/* Gráfico */}
             <Card className="border border-border shadow-sm">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Progresso de Ideias (Últimos meses)</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-base sm:text-lg">Progresso de Ideias (Últimos meses)</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
                         Número de ideias criadas mensalmente.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
-                    <div className="h-[220px] md:h-[260px]">
+                    <div className="h-[180px] sm:h-[220px] md:h-[260px] -ml-4 sm:ml-0">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 18, right: 12, left: 0, bottom: 6 }}>
+                            <BarChart data={chartData} margin={{ top: 18, right: 4, left: -20, bottom: 6 }}>
                                 <defs>
                                     <linearGradient id="colorIdeias" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.95} />
@@ -161,42 +209,42 @@ export default function Dashboard() {
             </Card>
 
             {/* Seções secundárias */}
-            <section className="grid gap-8 lg:grid-cols-2">
+            <section className="grid gap-6 sm:gap-8 lg:grid-cols-2">
                 {/* Ideias Recentes */}
                 <Card className="border border-border shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Clock className="text-primary" size={18} />
+                        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                            <Clock className="text-primary" size={16} />
                             Ideias Recentes
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="text-xs sm:text-sm">
                             Últimas ideias criadas ou modificadas.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
+                        <div className="space-y-2 sm:space-y-3">
                             {displayRecent.map((idea, index) => (
                                 <div
                                     key={index}
-                                    className="flex justify-between items-center rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors p-3"
+                                    className="flex flex-col xs:flex-row justify-between xs:items-center rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors p-3 gap-2"
                                 >
-                                    <div>
-                                        <h3 className="font-semibold text-foreground">
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
                                             {idea.title}
                                         </h3>
-                                        <p className="text-sm text-muted-foreground">
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
                                             {String(idea.status)}
                                         </p>
                                     </div>
                                     {idea.id ? (
-                                        <Button size="sm" variant="outline" asChild>
+                                        <Button size="sm" variant="outline" asChild className="w-full xs:w-auto flex-shrink-0">
                                             <Link href={`/ideas/${idea.id}`}>
                                                 Abrir
                                             </Link>
                                         </Button>
                                     ) : (
                                         // se não houver ID, renderiza botão desabilitado e loga para debug
-                                        <Button size="sm" variant="outline" disabled onClick={() => console.warn('dashboard: missing id for recent idea', idea)}>
+                                        <Button size="sm" variant="outline" disabled onClick={() => console.warn('dashboard: missing id for recent idea', idea)} className="w-full xs:w-auto">
                                             Sem ID
                                         </Button>
                                     )}
@@ -209,12 +257,12 @@ export default function Dashboard() {
                 {/* Interações IA */}
                 <Card className="border border-border shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">Sugestões da IA</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-base sm:text-lg">Sugestões da IA</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">
                             Insights personalizados com base nas suas ideias.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
+                    <CardContent className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                         <Interaction text="💡 'Sua ideia sobre educação tem potencial para IA generativa.'" />
                         <Interaction text="🤖 'Tente explorar parcerias com startups de tecnologia.'" />
                         <Interaction text="🚀 'A IA sugere adicionar um módulo de aprendizado adaptativo.'" />
@@ -222,7 +270,7 @@ export default function Dashboard() {
                 </Card>
             </section>
         </div>
-    );
+    )
 }
 
 
@@ -235,7 +283,6 @@ function Interaction({ text }: { text: string }) {
 }
 
 
-/* === Custom Tooltip === */
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload || !payload.length) return null;
     const point = payload[0].payload;

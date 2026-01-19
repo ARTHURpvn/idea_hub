@@ -198,10 +198,16 @@ export function SimpleEditor({idea_id, annotation}: Props) {
             try {
                 console.log('[autosave] saving annotation', { id, content });
                 await updateIdea({ id, raw_content: content });
-                toast.success('Anotação salva');
+                toast.success('Salvo automaticamente ✓', {
+                    description: 'Suas anotações foram salvas',
+                    duration: 2000
+                });
             } catch (err) {
                 console.error('Erro ao salvar anotação:', err);
-                toast.error('Erro ao salvar anotação');
+                toast.error('Erro ao salvar', {
+                    description: 'Não foi possível salvar suas alterações',
+                    duration: 3000
+                });
             } finally {
                 isSavingRef.current = false;
             }

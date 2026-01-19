@@ -97,27 +97,27 @@ const RegisterPage = () => {
         if(!res) form.reset()
     }
     return (
-        <div className="flex items-center justify-center h-screen">
-            <Card className="w-full max-w-sm">
-                <CardHeader>
-                    <CardTitle>Registar-se na Plataforma</CardTitle>
-                    <CardDescription>
+        <div className="flex items-center justify-center min-h-screen p-4">
+            <Card className="w-full max-w-md sm:max-w-lg">
+                <CardHeader className="space-y-1 p-4 sm:p-6">
+                    <CardTitle className="text-xl sm:text-2xl">Registrar-se na Plataforma</CardTitle>
+                    <CardDescription className="text-sm">
                         Insira suas credenciais para criar uma conta.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                             <FormField
                                 control={form.control}
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Nome Completo</FormLabel>
+                                        <FormLabel className="text-sm">Nome Completo</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Insira seu Nome Completo" type={"text"} maxLength={40} {...field} />
                                         </FormControl>
-                                        <FormDescription>
+                                        <FormDescription className="text-xs sm:text-sm">
                                             Insira o seu nome completo.
                                         </FormDescription>
                                         <FormMessage />
@@ -129,11 +129,11 @@ const RegisterPage = () => {
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Gmail</FormLabel>
+                                        <FormLabel className="text-sm">Gmail</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Insira seu email" type={"email"} maxLength={40} {...field} />
                                         </FormControl>
-                                        <FormDescription>
+                                        <FormDescription className="text-xs sm:text-sm">
                                             Insira um email para ser cadastrado.
                                         </FormDescription>
                                         <FormMessage />
@@ -145,16 +145,16 @@ const RegisterPage = () => {
                                 name="password"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Senha</FormLabel>
+                                        <FormLabel className="text-sm">Senha</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Input placeholder="Insira sua Senha" type={pass} required maxLength={24} {...field} />
-                                                <button onClick={togglePass} className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                                    {pass === "password" ? <EyeClosedIcon /> : <EyeIcon />}
+                                                <button type="button" onClick={togglePass} className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                                    {pass === "password" ? <EyeClosedIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                                                 </button>
                                             </div>
                                         </FormControl>
-                                        <FormDescription>
+                                        <FormDescription className="text-xs sm:text-sm">
                                             Insira a sua senha.
                                         </FormDescription>
                                         <FormMessage />
@@ -166,28 +166,28 @@ const RegisterPage = () => {
                                 name="confirmPassword"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Senha</FormLabel>
+                                        <FormLabel className="text-sm">Confirmar Senha</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Input placeholder="Confirme sua Senha" type={conf} required maxLength={24} {...field} />
-                                                <button onClick={toggleConf} className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                                    {conf === "password" ? <EyeClosedIcon /> : <EyeIcon />}
+                                                <button type="button" onClick={toggleConf} className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                                    {conf === "password" ? <EyeClosedIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                                                 </button>
                                             </div>
                                         </FormControl>
-                                        <FormDescription>
+                                        <FormDescription className="text-xs sm:text-sm">
                                             Confirme a sua senha.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className={"w-full"}>Submit</Button>
+                            <Button type="submit" className={"w-full"}>Confirmar</Button>
                         </form>
                     </Form>
                 </CardContent>
-                <CardFooter className="flex-col gap-2">
-                    <p>
+                <CardFooter className="flex-col gap-2 p-4 sm:p-6">
+                    <p className="text-sm text-muted-foreground">
                         Ja tem uma conta?
                     </p>
                     <Button variant="outline" className="w-full" asChild>

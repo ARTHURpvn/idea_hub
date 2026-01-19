@@ -68,6 +68,31 @@ export const useChatStore = create<ChatStore & ChatStoreActions>()(
                 const res = await createChatReq(idea_id)
                 if(!res) return false
                 await get().mapChats()
+
+                // Automatically create a chat for the newly created idea and seed it with an initial message.
+                try {
+                    if (idea_id) {
+                        const seededKey = `seeded_initial_chat_${idea_id}`
+                        let alreadySeeded = null
+                        try { alreadySeeded = typeof window !== 'undefined' ? window.localStorage.getItem(seededKey) : null } catch (e) { alreadySeeded = null }
+                        if (!alreadySeeded) {
+                            try {
+                                if (res.chat_id) {
+
+                                    const chatId = res.chat_id
+                                    const sent = await sendMessageReq({ chat_id: chatId, message: "" })
+                                    if (sent) {
+                                        try { typeof window !== 'undefined' && window.localStorage.setItem(seededKey, '1') } catch (e) {}
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('createChat/sendMessage after createIdea failed', e)
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('auto seed chat after createIdea error', e)
+                }
                 return res.chat_id
             },
 
