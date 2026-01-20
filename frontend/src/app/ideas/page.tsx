@@ -165,13 +165,13 @@ export default function IdeiasPage() {
                                     {/* Gradient overlay on hover */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                                    <CardHeader className="flex flex-row items-start justify-between gap-3 p-4 sm:p-5 relative z-10">
+                                    <CardHeader className="flex flex-row items-start justify-between gap-3 sm:p-5 relative z-10">
                                         <div className="min-w-0 flex-1">
                                             <h2 className="text-base sm:text-lg font-bold truncate group-hover:text-primary transition-colors">
                                                 {idea.title}
                                             </h2>
                                             {idea.ai_classification && (
-                                                <div className="flex items-center gap-1.5 mt-2">
+                                                <div className="flex items-center gap-1.5 ">
                                                     <Sparkles className="w-3 h-3 text-primary" />
                                                     <p className="text-xs text-muted-foreground line-clamp-1">
                                                         {idea.ai_classification}
