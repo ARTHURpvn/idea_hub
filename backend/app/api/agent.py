@@ -48,8 +48,21 @@ def idea(idea_id: str, authorization: str = Header(...)):
         raise
 
 
+# Accept optional `sender` query param. If sender == 'AI', persist the message as AI and return it
 @router.post("/{chat_id}", status_code=200, response_model=MessageResponse, tags=["Chat"])
-async def chat_message(chat_id: str, message: str):
+async def chat_message(chat_id: str, message: str, sender: Optional[str] = None):
+    # If caller explicitly sends sender=AI, save the message directly as coming from the AI and skip workflow
+    try:
+        if sender and str(sender).upper() == "AI":
+            try:
+                create_message(chat_id, message, "AI")
+            except Exception as e:
+                print(f"Erro ao criar mensagem AI via sender param: {e}")
+            return {"message": message}
+    except Exception:
+        # proceed to normal flow if any unexpected error
+        pass
+
     try:
         create_message(chat_id, message, "USER")
     except Exception as e:
@@ -176,4 +189,3 @@ def delete_chat(chat_id: str, authorization: str = Header(...)):
     except Exception as e:
         print(f"Erro ao deletar chat: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao deletar chat")
-

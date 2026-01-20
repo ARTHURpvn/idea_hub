@@ -165,12 +165,29 @@ def get_user_query(user_id: str) -> Optional[dict]:
 
 
     try:
-        cur.execute("SELECT email, name FROM users WHERE id = %s", (user_id,))
+        # 'first_login' column doesn't exist in the DB; use last_login (timestamp) and derive first_login
+        cur.execute("SELECT email, name, last_login FROM users WHERE id = %s", (user_id,))
         user_record = cur.fetchone()
         if not user_record:
             return None
-        email, name = user_record
-        return {"email": email, "name": name}
+
+        # Trata retorno com 3 colunas (email, name, last_login)
+        if len(user_record) == 3:
+            email, name, last_login = user_record
+        else:
+            email, name = user_record[:2]
+            last_login = None
+
+        # Se last_login for None significa que o usuário nunca fez login antes -> first_login True
+        first_login = True if last_login is None else False
+
+        return {"email": email, "name": name, "first_login": first_login}
     except Exception as e:
         print(f"Erro na query de login: {e}")
         return None
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass

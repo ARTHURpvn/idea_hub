@@ -31,6 +31,7 @@ class LoginSuccess(BaseModel):
     access_token: str
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    first_login: Optional[bool] = None
 
 
 class RegisterSuccess(BaseModel):
@@ -45,6 +46,7 @@ class TokenResponse(BaseModel):
 class MeResponse(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    first_login: Optional[bool] = None
 
 
 def validate_password(password: str) -> bool:
@@ -60,12 +62,13 @@ def validate_password(password: str) -> bool:
 
 def _extract_user_info(user_record) -> tuple:
     """Normalize user_record returned by get_user_query.
-    Accepts dict with keys 'email' and 'name', or tuple/list (email, name) or (name,email).
-    Returns (name, email) or (None, None) on failure.
+    Accepts dict with keys 'email', 'name', and optional 'first_login',
+    or tuple/list (email, name) or (name,email).
+    Returns (name, email, first_login) or (None, None, None) on failure.
     """
     # Robust extraction: always ensure `email` is either a valid-looking email (contains '@') or None
     if not user_record:
-        return None, None
+        return None, None, None
 
     def _is_email(val):
         return isinstance(val, str) and "@" in val
@@ -75,7 +78,8 @@ def _extract_user_info(user_record) -> tuple:
         raw_email = user_record.get("email")
         email = raw_email if _is_email(raw_email) else None
         name = user_record.get("name")
-        return name, email
+        first_login = user_record.get("first_login")
+        return name, email, first_login
 
     # tuple/list case: try to find which element looks like an email
     if isinstance(user_record, (list, tuple)):
@@ -92,10 +96,11 @@ def _extract_user_info(user_record) -> tuple:
                 name = elem
                 break
 
-        return name, email
+        # No reliable place for first_login in tuple/list
+        return name, email, None
 
     # unknown format
-    return None, None
+    return None, None, None
 
 
 @router.post(
@@ -128,11 +133,11 @@ def login(request: Login):
             try:
                 user_id = check_token(token)
                 user_info = get_user_query(user_id)
-                username, email = _extract_user_info(user_info)
+                username, email, first_login = _extract_user_info(user_info)
             except Exception:
                 # mesmo que não consigamos buscar o usuário, retornamos o token
-                username, email = None, None
-            return {"access_token": token, "name": username, "email": email}
+                username, email, first_login = None, None, None
+            return {"access_token": token, "name": username, "email": email, "first_login": first_login}
 
         elif status_res == "no_user":
             # Email não encontrado -> validação no campo email
@@ -240,8 +245,8 @@ def me(authorization: str = Header(...)):
                 content={"errors": [{"field": "email", "message": "Usuário não encontrado"}]},
             )
 
-        username, email = _extract_user_info(user)
-        return {"name": username, "email": email}
+        username, email, first_login = _extract_user_info(user)
+        return {"name": username, "email": email, "first_login": first_login}
     except Exception as e:
         print(f"Erro ao obter username: {e}")
         return JSONResponse(
