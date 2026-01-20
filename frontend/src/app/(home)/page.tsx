@@ -240,14 +240,14 @@ const Home = () => {
                 ✨ Estamos em fase beta - Seja um dos primeiros testadores!
               </span>
             </p>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 pt-4 px-4">
-              <Link href="/auth/register" className="w-full sm:w-auto">
-                <Button size="lg" className="gap-2 text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-4 px-4">
+              <Link href="/auth/register">
+                <Button size="lg" className="gap-2 text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto min-w-[200px]">
                   Testar Gratuitamente <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
               </Link>
-              <Link href="/auth/login" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto">
+              <Link href="/auth/login">
+                <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto min-w-[200px]">
                   Já tenho conta
                 </Button>
               </Link>

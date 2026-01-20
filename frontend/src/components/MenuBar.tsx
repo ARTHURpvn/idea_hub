@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/sidebar"
 import {Button} from "./ui/button"
 import {Tooltip, TooltipTrigger, TooltipContent} from '@/components/ui/tooltip'
-import {LayoutDashboardIcon, LightbulbIcon, LogOutIcon, PanelLeft, SettingsIcon, UserIcon} from "lucide-react"
+import {LayoutDashboardIcon, LightbulbIcon, LogOutIcon, PanelLeft, UserIcon, Sparkles} from "lucide-react"
 import Image from "next/image"
 import {useAuthStore} from "@/store/auth_store"
 import {cn} from "@/lib/utils"
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { Badge } from "./ui/badge";
+import { useIdeaStore } from "@/store/idea_store";
 
 export default function AppSidebar() {
     const {toggleSidebar, open} = useSidebar()
@@ -26,6 +28,9 @@ export default function AppSidebar() {
     const username = name.split(" ")[0] + " " + name.split(" ")[1]?.charAt(0).toUpperCase() + "."
     const email = useAuthStore((state) => state.email) || "User@gmail.com"
 
+    // Get counts for badges
+    const ideaProgress = useIdeaStore((state) => state.ideaProgress) || 0;
+
     const menuActions = [
         {
             name: "Dashboard",
@@ -33,7 +38,7 @@ export default function AppSidebar() {
             href: "/dashboard",
         },
         {
-            name: "Ideas",
+            name: "Ideias",
             Icon: LightbulbIcon,
             href: "/ideas",
         },
@@ -78,8 +83,8 @@ export default function AppSidebar() {
                                 aria-expanded={open}
                                 className={cn(
                                     "transition-all duration-300 rounded-full p-2 flex items-center justify-center",
-                                    "hover:scale-105",
-                                    "shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2",
+                                    "hover:scale-105 hover:bg-primary/10",
+                                    "shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2",
                                 )}
                                 aria-label={open ? "Fechar menu" : "Abrir menu"}
                                 onClick={() => toggleSidebar()}
@@ -101,14 +106,15 @@ export default function AppSidebar() {
                             variant={"aside"}
                             size={"lg"}
                             className={cn(
-                                "relative w-full py-3 flex flex-row gap-3 items-center box-border px-2",
+                                "relative w-full py-3 flex flex-row gap-3 items-center box-border px-2 rounded-xl transition-all duration-200",
                                 open ? "justify-start" : "justify-center",
-                                route.startsWith(action.href) && "text-primary"
+                                route.startsWith(action.href)
+                                    ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary shadow-sm"
+                                    : "hover:bg-muted/50 hover:scale-[1.02]"
                             )}
                             asChild
                         >
                             <Link href={action.href}>
-
                                 <span
                                     className={cn(
                                         open
@@ -116,11 +122,11 @@ export default function AppSidebar() {
                                             : "absolute left-1/2 -translate-x-1/2 w-10 flex items-center justify-center z-10"
                                     )}
                                 >
-                                    <action.Icon strokeWidth={2} className={cn("size-5 text-current transition-[color,stroke]", route.startsWith(action.href) && "text-primary")}/>
+                                    <action.Icon strokeWidth={2} className={cn("size-5 text-current transition-all duration-200", route.startsWith(action.href) && "text-primary scale-110")}/>
                                 </span>
                                 <span
                                     className={cn(
-                                        "overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] transition-colors duration-300 text-lg md:block",
+                                        "overflow-hidden whitespace-nowrap transition-all duration-300 text-base font-medium flex items-center gap-2",
                                         open ? "max-w-[200px] opacity-100 ml-0" : "max-w-0 opacity-0"
                                     )}
                                 >
@@ -132,29 +138,43 @@ export default function AppSidebar() {
                 ))}
             </SidebarContent>
             <SidebarFooter className={
-                cn("flex flex-row items-center border-t border-border py-4 mx-4 mt-auto", open ? "justify-between" : "justify-center"
+                cn("flex flex-row items-center border-t border-border py-3 px-4 mx-4 mt-auto",
+                    open ? "justify-between" : "justify-center"
                 )}>
-                <div className={cn("flex items-center", open ? "flex-row gap-4 mr-2" : "justify-center w-full")}>
-                    <div className={"flex justify-center items-center size-10 bg-secondary rounded-md"}>
-                        <UserIcon className={"text-current transition-[color,stroke] duration-300"} />
+                <div className={cn("flex items-center transition-all duration-300", open ? "flex-row gap-4" : "justify-center w-full")}>
+                    <div className={cn(
+                        "flex justify-center items-center size-10 transition-all duration-300",
+                        "bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10"
+                    )}>
+                        <UserIcon className={"text-primary transition-all duration-300 size-5"} />
                     </div>
                     <div
-                        className={cn("overflow-hidden transition-[max-width,opacity] duration-300", open ? "max-w-[120px] opacity-100 ml-2" : "max-w-0 opacity-0")}>
-                        <p className={"text-sm font-medium"}>
+                        className={cn("overflow-hidden transition-all duration-300", open ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0")}>
+                        <p className={"text-sm font-semibold truncate"}>
                             {username}
                         </p>
-                        <p className={"text-xs text-muted-foreground truncate overflow-hidden max-w-[90%]"}>
+                        <p className={"text-xs text-muted-foreground truncate"}>
                             {email}
                         </p>
                     </div>
                 </div>
 
                 {open && (
-                    <div className={`flex items-center gap-2 ${open ? "opacity-100" : "opacity-0"} duration-500`}>
-                        <Button variant={"exit"} size={"icon"} onClick={logout}>
-                            <LogOutIcon className={"text-destructive size-5 transition-[color,stroke] duration-300"}/>
-                        </Button>
-                    </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant={"ghost"}
+                                size={"icon"}
+                                onClick={logout}
+                                className="hover:bg-destructive/10 transition-all duration-200 rounded-lg"
+                            >
+                                <LogOutIcon className={"size-5 text-destructive"}/>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                            Sair da conta
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </SidebarFooter>
         </Sidebar>

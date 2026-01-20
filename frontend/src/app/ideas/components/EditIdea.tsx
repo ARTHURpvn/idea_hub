@@ -23,7 +23,7 @@ import {
 import z from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { X, Edit3 } from "lucide-react"
+import { X, Edit3, Trash2, Save } from "lucide-react"
 import { useIdeaStore } from "@/store/idea_store"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
@@ -149,12 +149,16 @@ const EditIdea = ({
     return (
         <Dialog open={open} onOpenChange={(v) => { if (loading) return; setOpen(v) }}>
             <DialogTrigger asChild>
-                <Button variant="ghost"><Edit3 className="mr-2" />{triggerLabel}</Button>
+                <Button variant="ghost" size="sm" className="gap-2 hover:bg-primary/10 hover:text-primary transition">
+                    <Edit3 className="w-4 h-4" />
+                    {triggerLabel}
+                </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader className="mb-4">
-                    <DialogTitle>
-                        Editar ideia
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        <Edit3 className="w-5 h-5 text-primary" />
+                        Editar Ideia
                     </DialogTitle>
                     <DialogDescription>
                         Altere os campos da sua ideia e salve as mudanças.
@@ -241,11 +245,13 @@ const EditIdea = ({
                             )}
                         />
 
-                        <div className={"w-full flex items-center justify-between gap-4"}>
+                        <div className={"w-full flex items-center justify-between gap-4 pt-2 border-t"}>
                             <div>
                                 <Button
                                     type="button"
                                     variant={"destructive"}
+                                    size="sm"
+                                    className="gap-2"
                                     onClick={async () => {
                                         if (loading) return
                                         const confirmDelete = window.confirm("Tem certeza que deseja excluir esta ideia? Esta ação não pode ser desfeita.")
@@ -265,21 +271,37 @@ const EditIdea = ({
                                     }}
                                     disabled={loading}
                                 >
+                                    <Trash2 className="w-4 h-4" />
                                     Excluir
                                 </Button>
                             </div>
-                            <div className="flex gap-4">
-                                <Button type="button" variant={"ghost"} onClick={() => {form.reset(); setOpen(false)}} disabled={loading}>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={"outline"}
+                                    size="sm"
+                                    onClick={() => {form.reset(); setOpen(false)}}
+                                    disabled={loading}
+                                >
                                     Cancelar
                                 </Button>
-                                <Button type="submit" disabled={loading} aria-busy={loading}>
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    className="gap-2"
+                                    disabled={loading}
+                                    aria-busy={loading}
+                                >
                                     {loading ? (
                                         <>
-                                            <Spinner className="inline-block mr-2" />
-                                            Salvando
+                                            <Spinner className="inline-block" />
+                                            Salvando...
                                         </>
                                     ) : (
-                                        "Salvar"
+                                        <>
+                                            <Save className="w-4 h-4" />
+                                            Salvar
+                                        </>
                                     )}
                                 </Button>
                             </div>

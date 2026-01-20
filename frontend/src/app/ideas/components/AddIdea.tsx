@@ -23,7 +23,7 @@ import {
 import z from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { PlusIcon, X } from "lucide-react"
+import { PlusIcon, X, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useIdeaStore } from "@/store/idea_store"
@@ -96,34 +96,35 @@ const AddIdea = ({variant}: {variant: "default" | "secondary" | "primary"}) => {
             <DialogTrigger asChild>
                 <Button
                     variant={variant == "primary" ? "default": variant}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto gap-2"
                 >
-                    <PlusIcon />
+                    <PlusIcon className="w-4 h-4" />
                     { variant == "primary" ? "Criar primeira ideia" : "Nova Ideia"}
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader className="mb-4">
-                    <DialogTitle>
-                        Criar uma nova ideia
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        <PlusIcon className="w-5 h-5 text-primary" />
+                        Criar Nova Ideia
                     </DialogTitle>
                     <DialogDescription>
-                        Adicione uma nova ideia para ser avaliada e discutida.
+                        Adicione uma nova ideia para ser desenvolvida e organizada.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <FormField
                             control={form.control}
                             name="ideaName"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Nome da Ideia</FormLabel>
+                                    <FormLabel>Título da Ideia</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Insira a sua Ideia" {...field} />
+                                        <Input placeholder="Ex: Sistema de gerenciamento de tarefas" {...field} />
                                     </FormControl>
                                     <FormDescription>
-                                        Sera o titulo da sua ideia. A IA vai pegar essa informacao para te ajudar
+                                        O título será usado pela IA para ajudar você a desenvolver a ideia
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -137,12 +138,14 @@ const AddIdea = ({variant}: {variant: "default" | "secondary" | "primary"}) => {
                                     <FormLabel>Tags</FormLabel>
                                     <FormControl>
                                         <div className="flex gap-2">
-                                            <Input placeholder="Insira uma tag" {...field} onKeyDown={handleTagKeyDown} />
-                                            <Button onClick={handleAddTags} variant={"secondary"} type="button">Adicionar</Button>
+                                            <Input placeholder="Ex: tecnologia, produtividade" {...field} onKeyDown={handleTagKeyDown} />
+                                            <Button onClick={handleAddTags} variant={"secondary"} type="button" size="sm">
+                                                Adicionar
+                                            </Button>
                                         </div>
                                     </FormControl>
                                     <FormDescription>
-                                        Insira tags para sua ideia. Sera util para organizar e filtrar ideias.
+                                        Tags facilitam a organização e busca das suas ideias
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -154,12 +157,12 @@ const AddIdea = ({variant}: {variant: "default" | "secondary" | "primary"}) => {
                             <div className="flex flex-wrap gap-2">
                                 {tags.map((tag, index) => (
                                     <Badge key={`${tag}-${index}`} className="flex items-center gap-2 px-3 py-1" variant="secondary">
-                                        <span>{tag}</span>
+                                        <span>#{tag}</span>
                                         <button
                                             type="button"
                                             aria-label={`Remover tag ${tag}`}
                                             onClick={() => removeTag(tag)}
-                                            className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full hover:bg-muted/10"
+                                            className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-destructive/20 hover:text-destructive transition"
                                         >
                                             <X className="w-3 h-3" />
                                         </button>
@@ -167,18 +170,33 @@ const AddIdea = ({variant}: {variant: "default" | "secondary" | "primary"}) => {
                                 ))}
                             </div>
                         )}
-                        <div className={"w-full justify-end flex gap-4 mt-18"}>
-                            <Button type="button" variant={"ghost"} onClick={() => {form.reset(); setOpen(false)}} disabled={loading}>
+                        <div className={"w-full justify-end flex gap-2 mt-6 pt-4 border-t"}>
+                            <Button
+                                type="button"
+                                variant={"outline"}
+                                size="sm"
+                                onClick={() => {form.reset(); setTags([]); setOpen(false)}}
+                                disabled={loading}
+                            >
                                 Cancelar
                             </Button>
-                            <Button type="submit" disabled={loading} aria-busy={loading}>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                className="gap-2"
+                                disabled={loading}
+                                aria-busy={loading}
+                            >
                                 {loading ? (
                                     <>
-                                        <Spinner className="inline-block mr-2" />
-                                        Carregando
+                                        <Spinner className="inline-block" />
+                                        Criando...
                                     </>
                                 ) : (
-                                    "Enviar"
+                                    <>
+                                        <Save className="w-4 h-4" />
+                                        Criar Ideia
+                                    </>
                                 )}
                             </Button>
                          </div>

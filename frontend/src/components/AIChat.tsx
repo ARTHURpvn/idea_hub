@@ -1,7 +1,7 @@
 "use client";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { ClockIcon, Loader2, PlusIcon, Send, Sparkles, Trash2, MessageSquare } from "lucide-react";
+import { ClockIcon, Loader2, PlusIcon, Send, Sparkles, Trash2, MessageSquare, X } from "lucide-react";
 import {useEffect, useState, useRef } from "react"
 import { ScrollArea } from "./ui/scroll-area";
 import { AnimatePresence, motion } from "framer-motion";
@@ -220,6 +220,16 @@ const AIChat = ({open, setOpen, idea_id}: ChatProps) => {
                             >
                                 <PlusIcon className="w-4 h-4"/>
                                 <span className="hidden sm:inline font-medium">Novo</span>
+                            </Button>
+                            {/* Botão Fechar - Visível em Mobile */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setOpen(false)}
+                                className="sm:hidden gap-2 transition-all duration-200 hover:scale-105 hover:bg-destructive/10 hover:text-destructive"
+                                title="Fechar chat"
+                            >
+                                <X className="w-5 h-5"/>
                             </Button>
                         </div>
                     </div>

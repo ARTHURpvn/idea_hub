@@ -299,69 +299,64 @@ export default function IdeaNotesPage() {
     }
 
     return (
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col" style={{ height: 'calc(100vh - 60px)' }}>
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col gap-3 sm:gap-4" style={{ height: 'calc(100vh - 60px)' }}>
             {/* Header with Title, Status, and Actions */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-xl p-4 sm:p-6 shadow-lg border border-border flex-shrink-0 mb-3 sm:mb-4"
+                className="bg-gradient-to-br from-card to-card/50 rounded-2xl p-4 sm:p-6 shadow-xl border border-border/50 flex-shrink-0"
             >
-                <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-                    <div className="flex-1 min-w-0 w-full">
-                        <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => router.push("/ideas")}
-                                className="hover:bg-accent"
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-1" />
-                                Voltar
-                            </Button>
-                            <Separator orientation="vertical" className="h-6 hidden xs:block" />
-                            {idea && (
-                                <Badge className={`${getStatusColor(idea.status)} text-xs`}>
-                                    {idea.status}
-                                </Badge>
-                            )}
-                            {idea?.ai_classification && (
-                                <Badge variant="outline" className="gap-1 text-xs">
-                                    <Sparkles className="w-3 h-3" />
-                                    <span className="hidden xs:inline">{idea.ai_classification}</span>
-                                    <span className="xs:hidden">IA</span>
-                                </Badge>
-                            )}
-                        </div>
-
-                        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 break-words">
-                            {idea?.title || "Carregando..."}
-                        </h1>
-
-                        {idea?.tags && idea.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                                {idea.tags.map((tag: string, idx: number) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs">
-                                        {tag}
-                                    </Badge>
-                                ))}
-                            </div>
+                <div className="flex flex-col gap-4">
+                    {/* Navigation and Status Row */}
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push("/ideas")}
+                            className="hover:bg-accent gap-1.5"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            <span className="hidden xs:inline">Voltar</span>
+                        </Button>
+                        <Separator orientation="vertical" className="h-6 hidden xs:block" />
+                        {idea && (
+                            <Badge className={`${getStatusColor(idea.status)} text-white text-xs`}>
+                                {idea.status}
+                            </Badge>
+                        )}
+                        {idea?.ai_classification && (
+                            <Badge variant="outline" className="gap-1.5 text-xs border-primary/30 bg-primary/5">
+                                <Sparkles className="w-3 h-3 text-primary" />
+                                <span>{idea.ai_classification}</span>
+                            </Badge>
                         )}
                     </div>
 
-                    <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                    {/* Title and Actions Row */}
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                        <div className="flex-1 min-w-0 w-full">
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-3 break-words leading-tight">
+                                {idea?.title || "Carregando..."}
+                            </h1>
 
-                        {idea && <EditIdea idea_id={idea.id!} />}
+                            {idea?.tags && idea.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                    {idea.tags.map((tag: string, idx: number) => (
+                                        <Badge
+                                            key={idx}
+                                            variant="secondary"
+                                            className="text-xs hover:bg-primary/10 hover:text-primary transition cursor-default"
+                                        >
+                                            #{tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
-                        {/*<Button*/}
-                        {/*    variant="outline"*/}
-                        {/*    size="sm"*/}
-                        {/*    onClick={handleViewRoadmap}*/}
-                        {/*    className="gap-2"*/}
-                        {/*>*/}
-                        {/*    <Map className="w-4 h-4" />*/}
-                        {/*    Roadmap*/}
-                        {/*</Button>*/}
-
+                        <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
+                            {idea && <EditIdea idea_id={idea.id!} />}
+                        </div>
                     </div>
                 </div>
             </motion.div>
@@ -371,8 +366,8 @@ export default function IdeaNotesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-card rounded-xl shadow-lg border border-border flex-1"
-                style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 120px)' }}
+                className="bg-card rounded-2xl shadow-xl border border-border/50 flex-1 overflow-hidden"
+                style={{ display: 'flex', flexDirection: 'column' }}
             >
                 <SimpleEditor
                     idea_id={idea_id}
@@ -385,40 +380,56 @@ export default function IdeaNotesPage() {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <motion.div
-                            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50"
+                            className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-50"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.2 }}
+                            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
                         >
                             <div className="relative">
                                 {showChatPulse && (
-                                    <motion.div
-                                        className="absolute inset-0 rounded-full bg-primary"
-                                        animate={{
-                                            scale: [1, 1.2, 1],
-                                            opacity: [0.5, 0, 0.5],
-                                        }}
-                                        transition={{
-                                            duration: 2,
-                                            repeat: Infinity,
-                                            ease: "easeInOut",
-                                        }}
-                                    />
+                                    <>
+                                        <motion.div
+                                            className="absolute inset-0 rounded-full bg-primary"
+                                            animate={{
+                                                scale: [1, 1.5, 1],
+                                                opacity: [0.6, 0, 0.6],
+                                            }}
+                                            transition={{
+                                                duration: 2,
+                                                repeat: Infinity,
+                                                ease: "easeInOut",
+                                            }}
+                                        />
+                                        <motion.div
+                                            className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center"
+                                            animate={{
+                                                scale: [1, 1.1, 1],
+                                            }}
+                                            transition={{
+                                                duration: 1,
+                                                repeat: Infinity,
+                                            }}
+                                        >
+                                            !
+                                        </motion.div>
+                                    </>
                                 )}
                                 <Button
                                     size="lg"
-                                    className="size-10 sm:size-12 rounded-full shadow-2xl hover:shadow-primary/50 transition-all duration-300 relative"
+                                    className="relative size-14 sm:size-16 rounded-full shadow-2xl hover:shadow-primary/50 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
                                     onClick={handleChatOpen}
                                 >
-                                    <Sparkles className="size-4 sm:size-5" />
+                                    <Sparkles className="size-6 sm:size-7" />
                                 </Button>
                             </div>
                         </motion.div>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="text-sm sm:text-base">
-                        <p className="flex items-center gap-2">
-                            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
-                            Converse com a IA sobre esta ideia
+                    <TooltipContent side="left" className="text-sm sm:text-base bg-gradient-to-r from-primary/90 to-primary/80 border-primary/50">
+                        <p className="flex items-center gap-2 font-medium">
+                            <Sparkles className="w-4 h-4" />
+                            Converse com a IA sobre sua ideia
                         </p>
                     </TooltipContent>
                 </Tooltip>
