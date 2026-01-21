@@ -54,67 +54,67 @@ export default function WelcomeModal() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center justify-center mb-3 sm:mb-4">
             <div className="flex items-center justify-center">
-              <Image src="/ideahub_icon.png" alt="IdeaHub Icon" width={32} height={32} className="size-12" />
+              <Image src="/ideahub_icon.png" alt="IdeaHub Icon" width={32} height={32} className="size-10 sm:size-12" />
             </div>
           </div>
-          <DialogTitle className="text-2xl text-center">
+          <DialogTitle className="text-xl sm:text-2xl text-center">
             Bem-vindo ao IdeaHub! 🎉
           </DialogTitle>
-          <DialogDescription className="text-center text-base">
+          <DialogDescription className="text-center text-sm sm:text-base">
             Sua plataforma para organizar e desenvolver ideias com ajuda de IA
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="grid gap-4">
-            <div className="flex gap-4 items-start p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
-                <Lightbulb className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+        <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+          <div className="grid gap-3 sm:gap-4">
+            <div className="flex gap-3 sm:gap-4 items-start p-3 sm:p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">1. Crie suas ideias</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">1. Crie suas ideias</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Clique em "Nova Ideia" para começar. Escreva qualquer projeto que você imaginar.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-4 items-start p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="flex gap-3 sm:gap-4 items-start p-3 sm:p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">2. Converse com a IA</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">2. Converse com a IA</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Use o <strong>botão de chat flutuante 💬</strong> no canto inferior direito para tirar dúvidas e receber sugestões.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-4 items-start p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <BarChart3 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="flex gap-3 sm:gap-4 items-start p-3 sm:p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">3. Acompanhe o progresso</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">3. Acompanhe o progresso</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Visualize suas ideias no Dashboard e veja como elas evoluem ao longo do tempo.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mt-4">
-            <div className="flex items-start gap-3">
-              <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-400 mt-0.5">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-400 mt-0.5 text-xs">
                 BETA
               </Badge>
               <div>
-                <p className="text-sm">
+                <p className="text-xs sm:text-sm">
                   Estamos em fase beta. Se encontrar bugs, por favor reporte! Seu feedback nos ajuda a melhorar. 🐛
                 </p>
               </div>
@@ -122,15 +122,16 @@ export default function WelcomeModal() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <div className="flex flex-col gap-3 pt-2">
           <AddIdea variant={"primary"}/>
           <Button
             onClick={handleClose}
-            variant="outline"
-            className="flex-1"
+            variant="secondary"
+            className="w-full gap-2"
             size="lg"
           >
             Explorar Dashboard
+            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </DialogContent>

@@ -96,7 +96,8 @@ const AddIdea = ({variant}: {variant: "default" | "secondary" | "primary"}) => {
             <DialogTrigger asChild>
                 <Button
                     variant={variant == "primary" ? "default": variant}
-                    className="w-full sm:w-auto gap-2"
+                    className={variant == "primary" ? "w-full gap-2" : "w-full sm:w-auto gap-2"}
+                    size="lg"
                 >
                     <PlusIcon className="w-4 h-4" />
                     { variant == "primary" ? "Criar primeira ideia" : "Nova Ideia"}
