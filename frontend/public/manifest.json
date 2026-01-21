@@ -1,0 +1,52 @@
+{
+  "name": "IdeaHub - Organize suas Ideias com IA",
+  "short_name": "IdeaHub",
+  "description": "Plataforma para organizar, desenvolver e transformar suas ideias em projetos reais com ajuda de Inteligência Artificial",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/ideahub_icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ideahub_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "business", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Nova Ideia",
+      "short_name": "Nova",
+      "description": "Criar uma nova ideia",
+      "url": "/ideas",
+      "icons": [
+        {
+          "src": "/ideahub_icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Ver seu dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/ideahub_icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

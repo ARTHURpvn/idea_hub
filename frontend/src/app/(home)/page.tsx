@@ -10,6 +10,7 @@ import Image from "next/image"
 import { useAuthStore } from "@/store/auth_store"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import StructuredData from "@/components/StructuredData"
 
 // FAQ Item Component
 const FAQItem = ({ question, answer }: { question: string; answer: string }) => {
@@ -185,6 +186,8 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+      <StructuredData />
+
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">

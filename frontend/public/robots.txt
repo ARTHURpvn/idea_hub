@@ -1,0 +1,16 @@
+# robots.txt for IdeaHub
+User-agent: *
+Allow: /
+Allow: /auth/login
+Allow: /auth/register
+
+# Disallow private pages
+Disallow: /dashboard
+Disallow: /ideas
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://ideahub-pvn.vercel.app/sitemap.xml
+
+# Crawl-delay for better server performance
+Crawl-delay: 1
