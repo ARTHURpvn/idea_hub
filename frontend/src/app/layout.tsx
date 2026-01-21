@@ -113,7 +113,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="google-site-verification" content="HQDjdI5YTOe_h4l71vS8HrWByRB9w6V10-nyiPSqiaM" />
+        <meta name="google-site-verification" content="K8C9CMr7n5ryw_QC9VUWoy-FWkEv03uCm8r4FOrUnlA" />
         <link rel="canonical" href="https://ideahub-pvn.vercel.app" />
       </head>
       <body
