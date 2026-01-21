@@ -144,7 +144,7 @@ const RegisterPage = () => {
                             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                             className="flex justify-center mb-2"
                         >
-                            <div className="relative w-32 h-12">
+                            <div className="relative w-38 h-18">
                                 <Image
                                     src="/ideahub_logo.png"
                                     alt="IdeaHub Logo"
@@ -294,7 +294,6 @@ const RegisterPage = () => {
                                     type="submit"
                                     className="w-full h-11 text-base font-semibold gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all shadow-lg hover:shadow-xl mt-6"
                                 >
-                                    <UserPlus className="w-5 h-5" />
                                     Criar Conta
                                     <ArrowRight className="w-4 h-4" />
                                 </Button>
@@ -315,7 +314,6 @@ const RegisterPage = () => {
                             asChild
                         >
                             <Link href="/auth/login">
-                                <Sparkles className="w-4 h-4" />
                                 Fazer login
                             </Link>
                         </Button>

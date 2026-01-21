@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/MenuBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MenuMobile from "./MenuMobile";
+import WelcomeModal from "./WelcomeModal";
 
 interface Props {
   children: React.ReactNode;
@@ -33,6 +34,8 @@ export default function AuthAwareLayout({ children }: Props) {
   if (mobile) {
     return (
       <>
+        <ToasterClient />
+        <WelcomeModal />
         <MenuMobile />
         <main className="w-full pb-20">{children}</main>
       </>
@@ -44,6 +47,7 @@ export default function AuthAwareLayout({ children }: Props) {
       <AppSidebar />
       <SidebarInset>
         <ToasterClient />
+        <WelcomeModal />
         <main className="w-full">{children}</main>
       </SidebarInset>
     </SidebarProvider>

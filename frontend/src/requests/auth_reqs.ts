@@ -12,6 +12,7 @@ export interface LoginPayload {
     access_token?: string,
     name: string,
     email: string,
+    first_login?: boolean,
 }
 
 interface RegisterRequest {
@@ -48,6 +49,7 @@ export const req_login = async(data: LoginRequest): Promise<LoginPayload | false
         const access_token = payload?.access_token ?? payload?.token ?? null
         const name = payload?.name ?? payload?.user?.name ?? payload?.data?.name ?? payload?.user?.username ?? null
         const email = payload?.email ?? payload?.user?.email ?? payload?.data?.email ?? null
+        const first_login = payload?.first_login ?? false
 
         if (!name && !email) {
             console.warn('Login response missing user info, payload:', payload)
@@ -61,6 +63,7 @@ export const req_login = async(data: LoginRequest): Promise<LoginPayload | false
             access_token: access_token ?? undefined,
             name: name ?? "",
             email: email ?? "",
+            first_login: first_login,
         }
 
         console.log('normalized login payload:', normalized)

@@ -8,30 +8,39 @@ import { Lightbulb, MessageSquare, BarChart3, Sparkles, ArrowRight } from "lucid
 import { useRouter } from "next/navigation"
 import AddIdea from "../app/ideas/components/AddIdea";
 import Image from "next/image"
+import { useAuthStore } from "@/store/auth_store"
 
 export default function WelcomeModal() {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const first_login = useAuthStore((state) => state.first_login)
+
+  // Garante que o componente está montado antes de verificar o store
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
-    // Verifica se é a primeira vez do usuário
-    const hasSeenWelcome = localStorage.getItem("hasSeenWelcome")
+    if (!mounted) return
 
-    if (!hasSeenWelcome) {
+    console.log('WelcomeModal - first_login:', first_login)
+
+    // Mostra o modal apenas se for o primeiro login
+    if (first_login === true) {
+      console.log('WelcomeModal - Abrindo modal de boas-vindas')
       // Aguarda um pequeno delay para não ser muito agressivo
       setTimeout(() => {
         setOpen(true)
       }, 500)
     }
-  }, [])
+  }, [first_login, mounted])
 
   const handleClose = () => {
-    localStorage.setItem("hasSeenWelcome", "true")
     setOpen(false)
   }
 
   const handleCreateIdea = () => {
-    localStorage.setItem("hasSeenWelcome", "true")
     setOpen(false)
     // Aguarda um pouco para a animação do modal fechar
     setTimeout(() => {

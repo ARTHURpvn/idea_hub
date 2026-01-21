@@ -7,6 +7,7 @@ import { toast } from "sonner";
 interface AuthState {
     name: string;
     email: string;
+    first_login: boolean;
 }
 
 interface AuthActions {
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         (set) => ({
             name: "",
             email: "",
+            first_login: false,
 
             login: async (email: string, password: string) => {
                 const data={email, password}
@@ -36,7 +38,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
                 if (!res) return false
 
-                set({name: res.name, email: res.email})
+                console.log('Setting auth store - first_login:', res.first_login)
+                set({name: res.name, email: res.email, first_login: res.first_login ?? false})
+
                 if (!res.access_token) {
                     console.warn('No access_token returned from login response')
                     toast.error('Erro de autenticação', {
@@ -60,9 +64,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     console.warn('could not read cookie after set', e)
                 }
 
+                // Aguardar um pouco mais para garantir que o estado foi persistido no localStorage
                 setTimeout(() => {
+                    console.log('Redirecting to dashboard...')
                     window.location.href = "/dashboard"
-                }, 1000)
+                }, 1500)
                 return true
             },
 
@@ -82,14 +88,15 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             },
 
             logout: () => {
-                set({name: "", email: ""})
+                set({name: "", email: "", first_login: false})
                 setCookie("token", "", {
                     maxAge: -1,
                     path: "/",
                     sameSite: "strict",
                     secure: true
                 })
-                localStorage.clear()
+                // Remover apenas o auth-storage ao invés de limpar tudo
+                localStorage.removeItem("auth-storage")
                 toast.success("Até logo! 👋", {
                     description: "Você foi desconectado com sucesso"
                 })
