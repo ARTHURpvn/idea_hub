@@ -94,8 +94,8 @@ def ensure_database_and_tables():
                     email VARCHAR(255) UNIQUE NOT NULL,
                     password VARCHAR(255) NOT NULL,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    last_login TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    firs_login BOOLEAN DEFAULT FALSE
+                    last_login TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+                    first_login BOOLEAN DEFAULT FALSE
                 )
                 """,
             ),
@@ -245,6 +245,44 @@ def ensure_database_and_tables():
                 print(f"[create_db] tabela {name} OK")
             except Exception as e:
                 print(f"[create_db] erro ao criar tabela {name}: {e}")
+
+        # Correções/alterações para bancos já existentes
+        try:
+            print("[create_db] aplicando correções na tabela users (se necessário)...")
+            # 1) Se existir coluna com typo 'firs_login', renomear para 'first_login'
+            cur_db.execute("""
+            DO $$
+            BEGIN
+              IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='firs_login') THEN
+                ALTER TABLE users RENAME COLUMN firs_login TO first_login;
+              END IF;
+            END
+            $$;
+            """)
+
+            # 2) Garantir que a coluna first_login exista para compatibilidade
+            cur_db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_login BOOLEAN DEFAULT FALSE;")
+
+            # 3) Garantir que last_login não tenha DEFAULT CURRENT_TIMESTAMP (queremos NULL por padrão)
+            #    Se há um DEFAULT qualquer, removemos (se a coluna existir)
+            cur_db.execute("""
+            DO $$
+            BEGIN
+              IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_login') THEN
+                BEGIN
+                  ALTER TABLE users ALTER COLUMN last_login DROP DEFAULT;
+                EXCEPTION WHEN undefined_column THEN
+                  -- ignore if something unexpected happens
+                  NULL;
+                END;
+              END IF;
+            END
+            $$;
+            """)
+
+            print("[create_db] correcoes aplicadas com sucesso (users)")
+        except Exception as e:
+            print(f"[create_db] aviso: falha ao aplicar correcoes na tabela users: {e}")
 
         print("[create_db] Tabelas criadas/confirmadas com sucesso.")
     except Exception as e:

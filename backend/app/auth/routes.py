@@ -1,9 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, status, Header
+from fastapi import APIRouter, status, Header, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 import re
-from ..database.querys.auth_query import login_query, register_query, check_token, get_user_query
+from ..database.querys.auth_query import login_query, register_query, check_token, get_user_query, mark_user_logged_in
 
 router = APIRouter()
 
@@ -114,7 +114,7 @@ def _extract_user_info(user_record) -> tuple:
     summary="Login do usuário",
     description="Autentica usuário com email e senha. Retorna token e dados básicos do usuário em caso de sucesso ou erros estruturados."
 )
-def login(request: Login):
+def login(request: Login, background_tasks: BackgroundTasks):
     try:
         result = login_query(request)
 
@@ -129,14 +129,26 @@ def login(request: Login):
 
         if status_res == "success":
             token = result.get("token")
+            first_login = result.get("first_login", False)
+            user_id = result.get("user_id")
             # retornar token + dados do usuário
             try:
-                user_id = check_token(token)
-                user_info = get_user_query(user_id)
-                username, email, first_login = _extract_user_info(user_info)
+                user_id_from_token = check_token(token)
+                user_info = get_user_query(user_id_from_token)
+                username, email, _ = _extract_user_info(user_info)  # ignorar first_login do get_user_query pois já temos
             except Exception:
                 # mesmo que não consigamos buscar o usuário, retornamos o token
-                username, email, first_login = None, None, None
+                username, email = None, None
+
+            # Agendar atualização do last_login/first_login em background **após** retornarmos a resposta
+            try:
+                # se conseguimos obter o user_id (da função login_query), usamos ele; senão usamos user_id_from_token
+                scheduled_user_id = user_id or user_id_from_token
+                if scheduled_user_id:
+                    background_tasks.add_task(mark_user_logged_in, scheduled_user_id)
+            except Exception as e:
+                print(f"Erro ao agendar mark_user_logged_in: {e}")
+
             return {"access_token": token, "name": username, "email": email, "first_login": first_login}
 
         elif status_res == "no_user":
@@ -155,7 +167,7 @@ def login(request: Login):
             # erros internos com mensagens específicas
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"errors": [{"field": "non_field", "message": result.get("message", "Erro interno")}]},
+                content={"errors": [{"field": "non_field", "message": result.get("message", "Erro interno")}]}
             )
 
     except Exception as e:
