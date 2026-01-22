@@ -31,14 +31,14 @@ const MenuMobile = () => {
             name: "Ideias",
             Icon: LightbulbIcon,
             href: "/ideas",
-            badge: ideaProgress > 0 ? ideaProgress : null,
-        },
-        {
-            name: "Feedback",
-            Icon: MessageSquare,
-            href: "/feedback",
             badge: null,
         },
+        // {
+        //     name: "Feedback",
+        //     Icon: MessageSquare,
+        //     href: "/feedback",
+        //     badge: null,
+        // },
     ]
 
     const handleLogout = () => {

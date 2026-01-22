@@ -42,11 +42,11 @@ export default function AppSidebar() {
             Icon: LightbulbIcon,
             href: "/ideas",
         },
-        {
-            name: "Feedback",
-            Icon: MessageSquare,
-            href: "/feedback",
-        },
+        // {
+        //     name: "Feedback",
+        //     Icon: MessageSquare,
+        //     href: "/feedback",
+        // },
         // {
         //     name: "Configurações",
         //     Icon: SettingsIcon,
