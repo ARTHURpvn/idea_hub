@@ -39,11 +39,6 @@ import Link from "next/link";
 import { createChatReq, sendMessageReq } from "@/requests/chat_reqs";
 
 const fallbackData = [
-    { name: "Jun", ideias: 2 },
-    { name: "Jul", ideias: 4 },
-    { name: "Ago", ideias: 3 },
-    { name: "Set", ideias: 5 },
-    { name: "Out", ideias: 4 },
 ];
 
 export default function Dashboard() {
@@ -51,6 +46,7 @@ export default function Dashboard() {
     const mapRoadmaps = useRoadmapStore((state) => state.mapRoadmaps)
 
     const name = useAuthStore((state) => state.name) || "User Name";
+    const firstLogin = useAuthStore((state) => state.firstLogin) || false;
     const months = useIdeaStore((state) => state.months) || [];
     const monthlyCounts = useIdeaStore((state) => state.monthlyCounts) || [];
     const recentIdeas = useIdeaStore((state) => state.recentIdeas) || [];
@@ -187,7 +183,7 @@ export default function Dashboard() {
             <header className="flex flex-col gap-4 sm:gap-6 lg:flex-row justify-between items-start lg:items-start">
                 <div className={"space-y-1"}>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                        Bem-vindo de volta, <span className="text-secondary">{name}</span>
+                        Bem-vindo, <span className="text-secondary">{name}</span>
                     </h1>
                     <p className="text-sm sm:text-base text-muted-foreground">
                         Veja suas estatísticas e acompanhe o progresso das suas ideias.

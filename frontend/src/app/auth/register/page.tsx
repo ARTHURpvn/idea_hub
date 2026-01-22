@@ -90,13 +90,18 @@ const RegisterPage = () => {
         defaultValues: {
             name: "",
             email: "",
-            password: ""
+            password: "",
+            confirmPassword: ""
         },
     })
     const {register} = useAuthStore.getState()
     async function onSubmit(values: z.infer<typeof formSchema>) {
         const res = await register(values.name, values.email, values.password)
-        if(!res) form.reset()
+        // Se deu sucesso, reseta o formulário antes do redirecionamento
+        if(res) {
+            form.reset()
+        }
+        // Se deu erro, mantém os valores para o usuário corrigir
     }
 
     return (

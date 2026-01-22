@@ -13,8 +13,10 @@ import { useAuthStore } from "@/store/auth_store"
 export default function WelcomeModal() {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [hasShown, setHasShown] = useState(false) // Previne múltiplas aberturas
   const router = useRouter()
   const first_login = useAuthStore((state) => state.first_login)
+  const setFirstLoginFalse = useAuthStore((state) => state.setFirstLoginFalse)
 
   // Garante que o componente está montado antes de verificar o store
   useEffect(() => {
@@ -23,18 +25,22 @@ export default function WelcomeModal() {
 
   useEffect(() => {
     if (!mounted) return
+    if (hasShown) return
 
-    console.log('WelcomeModal - first_login:', first_login)
+    console.log('WelcomeModal - first_login:', first_login, 'hasShown:', hasShown)
 
-    // Mostra o modal apenas se for o primeiro login
+    // Mostra o modal apenas se for o primeiro login E ainda não foi mostrado
     if (first_login === true) {
       console.log('WelcomeModal - Abrindo modal de boas-vindas')
+      setHasShown(true)
+      setFirstLoginFalse()
+
       // Aguarda um pequeno delay para não ser muito agressivo
       setTimeout(() => {
         setOpen(true)
       }, 500)
     }
-  }, [first_login, mounted])
+  }, [first_login, mounted, hasShown, setFirstLoginFalse])
 
   const handleClose = () => {
     setOpen(false)
@@ -42,9 +48,7 @@ export default function WelcomeModal() {
 
   const handleCreateIdea = () => {
     setOpen(false)
-    // Aguarda um pouco para a animação do modal fechar
     setTimeout(() => {
-      // Triggar o botão de criar ideia (se estiver no dashboard)
       const createButton = document.querySelector('[data-create-idea]')
       if (createButton) {
         (createButton as HTMLElement).click()

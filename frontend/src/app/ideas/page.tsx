@@ -159,9 +159,7 @@ export default function IdeiasPage() {
                                 transition={{ delay: index * 0.05 }}
                             >
                                 <Card
-                                    className="group relative transition-all duration-300 hover:shadow-xl cursor-pointer overflow-hidden border-muted hover:border-primary/50 h-full flex flex-col"
-                                    onClick={() => window.location.href = `/ideas/${idea.id}`}
-                                >
+                                    className="group relative transition-all duration-300 hover:shadow-xl cursor-pointer overflow-hidden border-muted hover:border-primary/50 h-full flex flex-col">
                                     {/* Gradient overlay on hover */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 

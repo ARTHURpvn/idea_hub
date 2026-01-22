@@ -82,6 +82,10 @@ const LoginPage = () => {
                 toast.warning("Acesso restrito 🔒", {
                     description: "Você precisa fazer login para acessar esta página"
                 })
+            } else if (reason === "token_expired") {
+                toast.error("Sessão expirada ⏰", {
+                    description: "Sua sessão expirou. Por favor, faça login novamente."
+                })
             }
             const msg = params.get("message")
             if (msg) {

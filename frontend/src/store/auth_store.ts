@@ -14,6 +14,7 @@ interface AuthActions {
     login: (email: string, password: string) => Promise<boolean>;
     register: (name: string, email: string, password: string) => Promise<boolean>;
     logout: () => void;
+    setFirstLoginFalse: () => void;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -73,18 +74,26 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             },
 
             register: async (name: string, email: string, password: string) => {
-                const data={name, email, password}
+                const data = {name, email, password}
+                let res: boolean = false
 
                 try {
-                    await req_register(data)
+                    res = await req_register(data)
+                } catch (error) {
+                    console.log('Register error:', error)
+                    return false
+                }
+
+                // Só redireciona se o registro foi bem-sucedido
+                if (res === true) {
                     setTimeout(() => {
                         window.location.href = "/auth/login"
                     }, 2000)
                     return true
-                } catch (error) {
-                    console.log(error)
-                    return false
                 }
+
+                // Se falhou, não redireciona e retorna false
+                return false
             },
 
             logout: () => {
@@ -101,6 +110,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     description: "Você foi desconectado com sucesso"
                 })
                 window.location.href = "/auth/login"
+            },
+
+            setFirstLoginFalse: () => {
+                console.log('Setting first_login to false')
+                set({ first_login: false })
             }
         }),
 

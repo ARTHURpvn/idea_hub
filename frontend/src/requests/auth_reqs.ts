@@ -68,7 +68,7 @@ export const req_login = async(data: LoginRequest): Promise<LoginPayload | false
 
         console.log('normalized login payload:', normalized)
         toast.success('Login realizado com sucesso!', {
-            description: `Bem-vindo de volta, ${name}!`
+            description: `Bem-vindo ${!first_login ? "de volta": ""}, ${name}!`
         })
         return normalized
     } catch (error: any) {
@@ -114,7 +114,7 @@ export const req_login = async(data: LoginRequest): Promise<LoginPayload | false
     return false
 }
 
-export const req_register = async(data: RegisterRequest) => {
+export const req_register = async(data: RegisterRequest): Promise<boolean> => {
     const loadingId = toast.loading("Criando sua conta...", {
         description: "Isso pode levar alguns segundos"
     })
@@ -129,8 +129,7 @@ export const req_register = async(data: RegisterRequest) => {
         toast.success("Conta criada com sucesso! 🎉", {
             description: "Você será redirecionado para fazer login"
         })
-        // don't redirect here; let caller handle navigation
-        return res
+        return true
 
     } catch (error: any) {
         toast.dismiss(loadingId)
@@ -144,19 +143,24 @@ export const req_register = async(data: RegisterRequest) => {
                 toast.error("E-mail já cadastrado", {
                     description: "Este e-mail já está em uso. Tente fazer login ou use outro e-mail."
                 })
+                return false
             } else {
                 toast.error("Dados inválidos", {
                     description: "Verifique os dados informados e tente novamente"
                 })
+                return false
+
             }
         } else if (status === 401 || status === 422) {
             toast.error("Erro de validação", {
                 description: "Verifique se todos os campos foram preenchidos corretamente"
             })
+            return false
         } else {
             toast.error("Erro ao criar conta", {
                 description: "Não foi possível conectar ao servidor. Tente novamente."
             })
+            return false
         }
 
         return false
@@ -166,13 +170,13 @@ export const req_register = async(data: RegisterRequest) => {
 export const validateToken = async() => {
     const token = getCookie("token")
     try {
-       const res = await api.get("/auth/validate",{
+       const res = await api.post("/auth/token", {}, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
         })
         console.log(res.data)
-        return res.data.valid
+        return res.data.validated
     } catch (error: any) {
         return false
     }
