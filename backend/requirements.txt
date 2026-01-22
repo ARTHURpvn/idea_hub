@@ -15,3 +15,5 @@ pillow
 matplotlib
 numpy
 seaborn
+aiosmtplib
+email-validator

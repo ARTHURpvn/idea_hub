@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar"
 import {Button} from "./ui/button"
 import {Tooltip, TooltipTrigger, TooltipContent} from '@/components/ui/tooltip'
-import {LayoutDashboardIcon, LightbulbIcon, LogOutIcon, PanelLeft, UserIcon, Sparkles} from "lucide-react"
+import {LayoutDashboardIcon, LightbulbIcon, LogOutIcon, PanelLeft, UserIcon, Sparkles, MessageSquare} from "lucide-react"
 import Image from "next/image"
 import {useAuthStore} from "@/store/auth_store"
 import {cn} from "@/lib/utils"
@@ -41,6 +41,11 @@ export default function AppSidebar() {
             name: "Ideias",
             Icon: LightbulbIcon,
             href: "/ideas",
+        },
+        {
+            name: "Feedback",
+            Icon: MessageSquare,
+            href: "/feedback",
         },
         // {
         //     name: "Configurações",

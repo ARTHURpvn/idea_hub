@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboardIcon, LightbulbIcon, User, LogOut, Sparkles } from "lucide-react"
+import { LayoutDashboardIcon, LightbulbIcon, User, LogOut, Sparkles, MessageSquare } from "lucide-react"
 import { Button } from "./ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -32,6 +32,12 @@ const MenuMobile = () => {
             Icon: LightbulbIcon,
             href: "/ideas",
             badge: ideaProgress > 0 ? ideaProgress : null,
+        },
+        {
+            name: "Feedback",
+            Icon: MessageSquare,
+            href: "/feedback",
+            badge: null,
         },
     ]
 
