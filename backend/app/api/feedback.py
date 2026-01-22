@@ -10,6 +10,8 @@ import time
 import traceback
 import logging
 
+import requests
+
 load_dotenv()
 
 router = APIRouter()
@@ -20,6 +22,42 @@ class FeedbackRequest(BaseModel):
     email: EmailStr
     type: str  # "bug", "feedback", "sponsor"
     message: str
+
+
+def _send_via_sendgrid(to_email: str, subject: str, html_body: str, from_email: str):
+    """Enviar email via SendGrid HTTP API como fallback quando SMTP não estiver disponível.
+
+    Requer a variável de ambiente SENDGRID_API_KEY.
+    """
+    api_key = os.getenv("SENDGRID_API_KEY")
+    if not api_key:
+        logger.debug("_send_via_sendgrid: SENDGRID_API_KEY não configurada")
+        raise ValueError("SENDGRID_API_KEY não configurada")
+
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "personalizations": [{
+            "to": [{"email": to_email}],
+            "subject": subject
+        }],
+        "from": {"email": from_email},
+        "content": [
+            {"type": "text/html", "value": html_body}
+        ]
+    }
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=15)
+    if resp.status_code >= 400:
+        logger.error("_send_via_sendgrid: erro ao enviar (status=%s) body=%s", resp.status_code, resp.text)
+        resp.raise_for_status()
+    logger.info("_send_via_sendgrid: email enviado para %s via SendGrid (status=%s)", to_email, resp.status_code)
+    return
+
 
 def send_email(to_email: str, subject: str, body: str, *, raise_on_failure: bool = True):
     """Envia email usando SMTP do Gmail com checagem de conectividade e retries.
@@ -35,11 +73,16 @@ def send_email(to_email: str, subject: str, body: str, *, raise_on_failure: bool
     sender_password = os.getenv("GMAIL_APP_PASSWORD")
 
     if not sender_email or not sender_password:
-        err = ValueError("Credenciais do Gmail não configuradas")
-        logger.error("send_email: credenciais não configuradas")
-        if raise_on_failure:
-            raise err
-        return
+        # Se não há credenciais SMTP, tente enviar via SendGrid como alternativa
+        logger.warning("send_email: credenciais SMTP não configuradas, tentando fallback HTTP (SendGrid)")
+        try:
+            _send_via_sendgrid(to_email, subject, body, from_email=os.getenv("SENDGRID_FROM", sender_email or "noreply@example.com"))
+            return
+        except Exception as e:
+            logger.exception("send_email: fallback SendGrid também falhou: %s", e)
+            if raise_on_failure:
+                raise
+            return
 
     # Teste rápido de conectividade TCP antes de tentar SMTP
     try:
@@ -49,9 +92,24 @@ def send_email(to_email: str, subject: str, body: str, *, raise_on_failure: bool
     except Exception as e:
         msg = f"Connectivity check failed to {smtp_server}:{smtp_port} - {e}"
         logger.error(msg)
-        if raise_on_failure:
-            raise
-        return
+        # Se a conectividade TCP falhar, tente fallback HTTP (SendGrid) se disponível
+        api_key = os.getenv("SENDGRID_API_KEY")
+        if api_key:
+            logger.info("send_email: conectividade SMTP bloqueada, tentando enviar via SendGrid HTTP API")
+            try:
+                _send_via_sendgrid(to_email, subject, body, from_email=os.getenv("SENDGRID_FROM", sender_email))
+                return
+            except Exception as e2:
+                logger.exception("send_email: fallback SendGrid falhou após falha de conectividade SMTP: %s", traceback.format_exc())
+                if raise_on_failure:
+                    raise
+                return
+        else:
+            # Não há fallback configurado
+            logger.debug("send_email: SENDGRID_API_KEY não configurado; não há fallback HTTP disponível")
+            if raise_on_failure:
+                raise
+            return
 
     # Criar mensagem
     message = MIMEMultipart("alternative")
@@ -84,12 +142,26 @@ def send_email(to_email: str, subject: str, body: str, *, raise_on_failure: bool
             return
         except (socket.error, smtplib.SMTPException) as e:
             logger.warning("send_email: tentativa %d falhou: %s", attempt, e)
+            # Se esgotaram as tentativas e houver SendGrid configurado, tente enviar via SendGrid como último recurso
             if attempt == max_attempts:
-                tb = traceback.format_exc()
-                logger.error("send_email: falha ao enviar após %d tentativas. traceback: %s", attempt, tb)
-                if raise_on_failure:
-                    raise
-                return
+                api_key = os.getenv("SENDGRID_API_KEY")
+                if api_key:
+                    logger.info("send_email: todas as tentativas SMTP falharam; tentando fallback SendGrid")
+                    try:
+                        _send_via_sendgrid(to_email, subject, body, from_email=os.getenv("SENDGRID_FROM", sender_email))
+                        return
+                    except Exception:
+                        tb = traceback.format_exc()
+                        logger.error("send_email: fallback SendGrid também falhou. traceback: %s", tb)
+                        if raise_on_failure:
+                            raise
+                        return
+                else:
+                    tb = traceback.format_exc()
+                    logger.error("send_email: falha ao enviar após %d tentativas. traceback: %s", attempt, tb)
+                    if raise_on_failure:
+                        raise
+                    return
             else:
                 # backoff
                 sleep_for = 2 ** (attempt - 1)
