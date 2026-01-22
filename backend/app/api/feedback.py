@@ -1,14 +1,19 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
 from pydantic import BaseModel, EmailStr
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
+import socket
+import time
+import traceback
+import logging
 
 load_dotenv()
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class FeedbackRequest(BaseModel):
     name: str
@@ -16,17 +21,37 @@ class FeedbackRequest(BaseModel):
     type: str  # "bug", "feedback", "sponsor"
     message: str
 
-def send_email(to_email: str, subject: str, body: str):
-    """Envia email usando SMTP do Gmail"""
+def send_email(to_email: str, subject: str, body: str, *, raise_on_failure: bool = True):
+    """Envia email usando SMTP do Gmail com checagem de conectividade e retries.
 
-    # Configurações do Gmail
+    Parâmetros:
+    - to_email, subject, body: como antes
+    - raise_on_failure: se True, propaga exceção; se False, apenas loga a falha (útil para BackgroundTasks)
+    """
+
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
     sender_email = os.getenv("GMAIL_USER")
     sender_password = os.getenv("GMAIL_APP_PASSWORD")
 
     if not sender_email or not sender_password:
-        raise ValueError("Credenciais do Gmail não configuradas")
+        err = ValueError("Credenciais do Gmail não configuradas")
+        logger.error("send_email: credenciais não configuradas")
+        if raise_on_failure:
+            raise err
+        return
+
+    # Teste rápido de conectividade TCP antes de tentar SMTP
+    try:
+        logger.debug("send_email: testando conectividade TCP %s:%s", smtp_server, smtp_port)
+        conn = socket.create_connection((smtp_server, smtp_port), timeout=10)
+        conn.close()
+    except Exception as e:
+        msg = f"Connectivity check failed to {smtp_server}:{smtp_port} - {e}"
+        logger.error(msg)
+        if raise_on_failure:
+            raise
+        return
 
     # Criar mensagem
     message = MIMEMultipart("alternative")
@@ -46,18 +71,41 @@ def send_email(to_email: str, subject: str, body: str):
     part = MIMEText(html_body, "html")
     message.attach(part)
 
-    # Enviar email
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, to_email, message.as_string())
-    except Exception as e:
-        raise Exception(f"Erro ao enviar email: {str(e)}")
+    # Enviar email com retries (exponential backoff)
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            logger.info("send_email: tentando enviar, tentativa %d/%d", attempt, max_attempts)
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=20) as server:
+                server.starttls()
+                server.login(sender_email, sender_password)
+                server.sendmail(sender_email, to_email, message.as_string())
+            logger.info("send_email: email enviado para %s", to_email)
+            return
+        except (socket.error, smtplib.SMTPException) as e:
+            logger.warning("send_email: tentativa %d falhou: %s", attempt, e)
+            if attempt == max_attempts:
+                tb = traceback.format_exc()
+                logger.error("send_email: falha ao enviar após %d tentativas. traceback: %s", attempt, tb)
+                if raise_on_failure:
+                    raise
+                return
+            else:
+                # backoff
+                sleep_for = 2 ** (attempt - 1)
+                logger.debug("send_email: aguardando %s segundos antes de nova tentativa", sleep_for)
+                time.sleep(sleep_for)
+        except Exception:
+            tb = traceback.format_exc()
+            logger.exception("send_email: erro inesperado ao enviar email: %s", tb)
+            if raise_on_failure:
+                raise
+            return
+
 
 @router.post("/feedback")
-async def submit_feedback(feedback: FeedbackRequest, request: Request):
-    """Recebe feedback/bug report e envia por email"""
+async def submit_feedback(feedback: FeedbackRequest, request: Request, background_tasks: BackgroundTasks):
+    """Recebe feedback/bug report e agenda envio por email em background (não bloqueante)."""
 
     try:
         # Mapear tipo de feedback
@@ -95,20 +143,22 @@ async def submit_feedback(feedback: FeedbackRequest, request: Request):
         # Email do destinatário (seu email)
         recipient_email = os.getenv("FEEDBACK_EMAIL", os.getenv("GMAIL_USER"))
 
-        # Enviar email
-        send_email(
-            to_email=recipient_email,
-            subject=f"[IdeaHub] {type_label} - {feedback.name}",
-            body=email_body
+        # Agendar envio em background; não propagar falhas para o usuário
+        background_tasks.add_task(
+            send_email,
+            recipient_email,
+            f"[IdeaHub] {type_label} - {feedback.name}",
+            email_body,
+            raise_on_failure=False,
         )
 
         return {
             "success": True,
-            "message": "Feedback enviado com sucesso! Obrigado pelo contato."
+            "message": "Feedback agendado para envio. Obrigado pelo contato."
         }
 
     except Exception as e:
-        print(f"Erro ao processar feedback: {str(e)}")
+        logger.exception("Erro ao processar feedback: %s", traceback.format_exc())
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao enviar feedback: {str(e)}"
